@@ -1,0 +1,618 @@
+/* Application views. Each view renders once into its own section and is then shown/hidden,
+ * so entries are preserved when navigating between lessons, labs and practice. */
+(function (root) {
+  'use strict';
+  var SM = root.SM, U = SM.units, X = SM.expr, PB = SM.problem, ui = SM.ui, el = ui.el, esc = ui.esc;
+  var V = {};
+
+  function sys() { return SM.store.sys(); }
+  function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function buildProblem(tid, seed, s) { return PB.build(SM.templateById(tid), seed, s || sys()); }
+  function topicName(t) { return (SM.store.TAGS[t] || t || '').replace(/-/g, ' '); }
+
+  /* ---------- tag → templates index (for targeted follow-up practice) ---------- */
+  var tagIndex = null;
+  function getTagIndex() {
+    if (tagIndex) return tagIndex;
+    tagIndex = {};
+    SM.templates.forEach(function (t) {
+      try {
+        var p = PB.build(t, 1, 'SI');
+        var tags = [t.topic];
+        p.parts.forEach(function (pt) { tags.push(pt.tag); pt.mistakes.forEach(function (m) { tags.push(m.tag); }); });
+        tags.forEach(function (tg) { (tagIndex[tg] = tagIndex[tg] || []); if (tagIndex[tg].indexOf(t.id) < 0) tagIndex[tg].push(t.id); });
+      } catch (e) { /* template validated by tests */ }
+    });
+    ['percent', 'log', 'units', 'mass-weight', 'area', 'factor2', 'rounding', 'sign'].forEach(function (g) {
+      var map = { percent: ['c3-water-content-lab', 'c3-e-n', 'c3-moist-from-wGsS'], log: ['c7-falling-head-k', 'c7-falling-head-t', 'c7-pump-unconfined'],
+                  units: ['c7-intrinsic', 'c3-cylinder', 'c7-travel-time'], 'mass-weight': ['c3-density-unitweight', 'c3-moist-oven'], area: ['c7-const-head-k', 'c3-cylinder'],
+                  factor2: ['c7-const-head-k'], rounding: ['c3-moist-oven'], sign: ['c7-heads'] };
+      tagIndex[g] = (tagIndex[g] || []).concat(map[g]).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    });
+    return tagIndex;
+  }
+
+  /* =================================================================== HOME */
+  V.home = function (sec) {
+    var nT3 = SM.templates.filter(function (t) { return t.chapter === 3; }).length, nT7 = SM.templates.filter(function (t) { return t.chapter === 7; }).length;
+    sec.innerHTML = '<div class="hero"><h2>Study Chapters 3 and 7 step by step</h2>' +
+      '<p>For CEG 3011C, Soil Mechanics. The content follows the scope of Das &amp; Sobhan, <i>Principles of Geotechnical Engineering</i>, 9th ed.: Chapter 3, Weight–Volume Relationships, and Chapter 7, Permeability. All explanations and problems are original. Everything runs in your browser; no account or AI service is needed.</p>' +
+      '<div class="cards">' +
+      card('#/learn/c3-phases', '📘 Learn', 'Short lessons. Each one goes concept → diagram → variables → relationship → worked example → your attempt → common mistakes.') +
+      card('#/phase', '🧪 Phase Lab', 'An interactive phase diagram. Enter knowns, see what can be found, and reveal each calculation. Includes an exploration mode.') +
+      card('#/perm', '💧 Permeability Lab', 'Constant-head and falling-head tests and layered soils. Predict first, then reveal.') +
+      card('#/practice', '✏️ Practice', nT3 + ' Chapter 3 and ' + nT7 + ' Chapter 7 problem templates, plus combined problems. Each template generates unlimited variants. Guided, independent and Socratic modes.') +
+      card('#/review', '🔀 Mixed review', 'You decide which method applies before solving.') +
+      card('#/exam', '⏱️ Mock exam', 'Choose chapters, difficulty, timer and whether a formula sheet is allowed.') +
+      card('#/mistakes', '🩹 Mistake review', 'See which concepts you missed and practise exactly those.') +
+      card('#/formulas', 'ƒ Formulas & glossary', 'Searchable formula sheet with units, assumptions and examples.') +
+      '</div></div>' +
+      '<div class="panel"><h3>A repeatable problem-solving process</h3><ol class="process"><li><b>Given</b>: extract the quantities and units.</li><li><b>Find</b>: state what is asked.</li><li><b>Sketch</b>: draw or complete the diagram.</li><li><b>Assumptions</b>: saturation, constant volume, etc.</li><li><b>Choose</b>: say why an equation applies.</li><li><b>Rearrange</b>: solve symbolically.</li><li><b>Substitute</b>: insert values with units.</li><li><b>Calculate</b>: keep 3–4 significant figures.</li><li><b>Check</b>: units and physical plausibility.</li><li><b>Interpret</b>: what the number means.</li></ol>' +
+      '<p class="muted">Every worked solution in this tool follows these ten steps. Stuck? Press <b>💡 How do I start?</b> for the next useful hint.</p></div>' +
+      '<div class="panel"><h3>About the content, sources and limitations</h3>' + sourcesHTML() + '</div>';
+    function card(href, t, d) { return '<a class="card" href="' + href + '"><h4>' + t + '</h4><p>' + d + '</p></a>'; }
+  };
+  function sourcesHTML() {
+    return '<ul class="small">' +
+      '<li><b>Scope:</b> Das, B. M. &amp; Sobhan, K., <i>Principles of Geotechnical Engineering</i>, 9th ed., Cengage, 2018 (ISBN 9781305970939), Chapters 3 and 7. No textbook problems, problem numbers or page references are reproduced. Instructor-specific requirements were not supplied, so none are assumed.</li>' +
+      '<li><b>Standard relationships</b>, such as phase relations, Darcy’s law, constant- and falling-head equations, layered-soil equivalents and pumping-well equations, are derived in the lessons and checked by independent hand calculations in the test suite (<code>tests/</code>).</li>' +
+      '<li><b>Empirical correlations used in problems</b>, each confirmed in at least two independent sources: Cubrinovski &amp; Ishihara (2002), Soils and Foundations 42(6), emax = 0.072 + 1.53emin for clean sands; Chapuis (2004), Can. Geotech. J. 41(5); Casagrande k = 1.4e²k₀.₈₅; the Kozeny–Carman proportionality k ∝ e³/(1 + e); Taylor (1948) with Ck ≈ 0.5e₀ from Tavenas et al. (1983); the Hazen form k = cD₁₀², with c stated in each problem; and Lee &amp; Singh (1971) R ≈ 80 + 0.2Dr. Samarasinghe et al. (1982) k = C₃eⁿ/(1 + e) was confirmed in one source and is used only with n calibrated from two given tests.</li>' +
+      '<li><b>Water viscosity</b> values for temperature corrections are standard reference data (IAPWS / CRC Handbook), with ηT/η20 rounded to 3 decimals.</li>' +
+      '<li><b>Clay liners:</b> Daniel &amp; Benson (1990), J. Geotech. Eng. 116(12), acceptable-zone concept, with k ≤ 1 × 10⁻⁷ cm/s.</li>' +
+      '<li><b>Known limitations:</b> (1) The auger-hole method is taught conceptually only, because the shape-factor equation in your textbook could not be verified, so no numerical auger-hole problems are generated. (2) The emax–emin fits for sands with fines, and the emax − emin vs D50 correlation, are mentioned but not used in problems, because they could not be confirmed in two sources. (3) Hydraulic-conductivity ranges by soil type are approximate; references differ. (4) Flow nets and other Chapter 8 material are deliberately excluded. (5) Check notation against your instructor’s slides; some symbols differ between editions.</li></ul>';
+  }
+
+  /* =================================================================== LEARN */
+  var lessonCache = {};
+  V.learn = function (sec) {
+    sec.innerHTML = '<div class="learn"><nav class="lesson-nav" aria-label="Lessons"></nav><div class="lesson-host"></div></div>';
+    var nav = sec.querySelector('.lesson-nav'), groups = { 3: 'Chapter 3 — Weight–Volume', 7: 'Chapter 7 — Permeability', X: 'Connecting the chapters' };
+    [3, 7, 'X'].forEach(function (c) {
+      nav.insertAdjacentHTML('beforeend', '<h4>' + groups[c] + '</h4><ul>' + SM.lessons.filter(function (l) { return l.chapter === c; }).map(function (l) {
+        return '<li><a href="#/learn/' + l.id + '" data-id="' + l.id + '">' + l.title + '</a></li>'; }).join('') + '</ul>');
+    });
+    var mh = Object.keys(SM.mathHelp);
+    nav.insertAdjacentHTML('beforeend', '<h4>Math help</h4>' + ui.mathHelpHTML(mh));
+  };
+  V.learnShow = function (sec, id) {
+    var lesson = SM.lessons.filter(function (l) { return l.id === id; })[0] || SM.lessons[0];
+    var host = sec.querySelector('.lesson-host');
+    Array.prototype.forEach.call(host.children, function (c) { c.hidden = true; });
+    sec.querySelectorAll('.lesson-nav a').forEach(function (a) {
+      a.classList.toggle('active', a.dataset.id === lesson.id);
+      var st = SM.store.get().lessons[a.dataset.id]; a.classList.toggle('done', !!(st && st.done));
+    });
+    SM.store.lesson(lesson.id, 'visited');
+    if (!lessonCache[lesson.id] || lessonCache[lesson.id].sys !== sys()) {
+      if (lessonCache[lesson.id]) lessonCache[lesson.id].node.remove();
+      lessonCache[lesson.id] = { node: renderLesson(lesson), sys: sys() };
+      host.appendChild(lessonCache[lesson.id].node);
+    }
+    lessonCache[lesson.id].node.hidden = false;
+  };
+  function renderLesson(L) {
+    var idx = SM.lessons.indexOf(L), prev = SM.lessons[idx - 1], next = SM.lessons[idx + 1];
+    var n = el('<article class="lesson"></article>');
+    var vars = '<table class="vars"><thead><tr><th>Symbol</th><th>Meaning</th><th>Units</th></tr></thead><tbody>' +
+      L.variables.map(function (v) { return '<tr><td>' + (/^[A-Za-z][A-Za-z0-9]*$/.test(v[0]) ? X.symHTML(v[0]) : v[0]) + '</td><td>' + v[1] + '</td><td>' + v[2] + '</td></tr>'; }).join('') + '</tbody></table>';
+    var rel = '<div class="eqlist">' + L.relations.map(function (r) { return '<div class="eqrow">' + X.eqHTML(r.lhs, r.expr) + '</div>'; }).join('') + '</div>' +
+      (L.assumptions.length ? '<p><b>Assumptions &amp; applicability</b></p><ul>' + L.assumptions.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ul>' : '');
+    n.innerHTML = '<header><span class="badge">' + ui.chLabel(L.chapter) + '</span><h2>' + L.title + '</h2><p class="muted small">Units in examples: <b>' + sys() + '</b> (change at top right). Lab permeability tests use cm and s in both systems.</p></header>' +
+      sect(1, 'The physical idea', L.concept) +
+      sect(2, 'Diagram', SM.diagrams.render(L.diagram) || '<p class="muted">This topic is mostly conceptual; see the example below.</p>') +
+      sect(3, 'Variables and units', vars) +
+      sect(4, 'Relationships and assumptions', rel || '<p class="muted">No calculation formula is used for this topic in this tool.</p>') +
+      sect(5, 'Worked example (no steps skipped)', '<div class="ex-host"></div>') +
+      sect(6, 'Your turn', '<div class="try-host"></div>') +
+      sect(7, 'Common mistakes and another try', '<ul>' + L.mistakes.map(function (m) { return '<li>' + m + '</li>'; }).join('') + '</ul><div class="concept-host"></div>') +
+      ui.mathHelpHTML(L.mathHelp) +
+      '<nav class="pager">' + (prev ? '<a class="btn ghost" href="#/learn/' + prev.id + '">← ' + prev.title + '</a>' : '<span></span>') + (next ? '<a class="btn ghost" href="#/learn/' + next.id + '">' + next.title + ' →</a>' : '') + '</nav>';
+    if (L.example) n.querySelector('.ex-host').appendChild(ui.ProblemPlayer(buildProblem(L.example.template, L.example.seed), { mode: 'example', hideHeader: false }));
+    else n.querySelector('.ex-host').innerHTML = '<p class="muted">This lesson is conceptual; the concept questions below test it.</p>';
+    var tryHost = n.querySelector('.try-host');
+    function mountTry(mode) {
+      if (!L.practice) { tryHost.innerHTML = '<p class="muted">Use the concept questions below.</p>'; return; }
+      var slot = 'lesson:' + L.id, cur = SM.store.getCurrent(slot);
+      if (!cur || cur.sys !== sys()) { cur = { seed: PB.newSeed(), sys: sys(), mode: 'guided' }; SM.store.setCurrent(slot, cur); }
+      if (mode) { cur.mode = mode; SM.store.setCurrent(slot, cur); }
+      var P = buildProblem(L.practice, cur.seed, cur.sys);
+      tryHost.innerHTML = '';
+      tryHost.appendChild(ui.ProblemPlayer(P, { mode: cur.mode, onNew: function () { SM.store.setCurrent(slot, { seed: PB.newSeed(), sys: sys(), mode: cur.mode }); mountTry(); },
+        onMode: mountTry, onScore: function (s) { if (s >= 0.7) { SM.store.lesson(L.id, 'done'); var a = document.querySelector('.lesson-nav a[data-id="' + L.id + '"]'); if (a) a.classList.add('done'); } } }));
+    }
+    mountTry();
+    var cq = SM.concepts.filter(function (q) { return q.chapter === L.chapter && (q.topic === (L.concepts || '') || topicMatch(q, L)); }).slice(0, 2);
+    if (L.concepts) cq = SM.concepts.filter(function (q) { return q.topic === L.concepts || (L.concepts === 'c7-factors' && q.topic === 'factors') || (L.concepts === 'c7-field' && q.topic === 'field') || (L.concepts === 'c7-liner' && q.topic === 'compacted-clay'); });
+    var ch = n.querySelector('.concept-host');
+    cq.forEach(function (q) { ch.appendChild(ui.MCQ(q)); });
+    return n;
+  }
+  function topicMatch(q, L) {
+    var t = L.example && SM.templateById(L.example.template); return !!t && q.topic === t.topic;
+  }
+  function sect(i, t, body) { return '<section class="lsec"><h3><span class="sn">' + i + '</span>' + t + '</h3>' + body + '</section>'; }
+
+  /* =================================================================== PHASE LAB */
+  V.phase = function (sec) {
+    sec.innerHTML = '<div class="tabs" role="tablist"><button role="tab" class="tab active" data-t="solve">Phase diagram solver</button><button role="tab" class="tab" data-t="explore">Explore: change w, S or e</button></div><div class="tabpanel" data-p="solve"></div><div class="tabpanel" data-p="explore" hidden></div>';
+    sec.querySelector('.tabs').addEventListener('click', function (ev) {
+      var b = ev.target.closest('.tab'); if (!b) return;
+      sec.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('active', x === b); });
+      sec.querySelectorAll('.tabpanel').forEach(function (p) { p.hidden = p.dataset.p !== b.dataset.t; });
+    });
+    phaseSolver(sec.querySelector('[data-p=solve]'));
+    phaseExplore(sec.querySelector('[data-p=explore]'));
+  };
+  V.phaseRefresh = function (sec) { if (sec._sys !== sys()) { sec._sys = sys(); V.phase(sec); } };
+
+  function phaseUnits(s) {
+    return s === 'SI' ? { volume: ['m³', 'cm³', 'L'], force: ['kN', 'N', 'kg (mass)', 'g (mass)'], unitWeight: ['kN/m³', 'N/m³', 'Mg/m³ (density)', 'g/cm³ (density)'], baseV: 'm³', baseF: 'kN', baseG: 'kN/m³', gw: 9.81 }
+                      : { volume: ['ft³', 'in³'], force: ['lb', 'kip'], unitWeight: ['lb/ft³'], baseV: 'ft³', baseF: 'lb', baseG: 'lb/ft³', gw: 62.4 };
+  }
+  function toBase(val, unit, kind, pu) {
+    if (kind === 'ratio') return unit === '%' ? val / 100 : val;
+    if (kind === 'none') return val;
+    if (kind === 'volume') return U.convert(val, unit, pu.baseV, 'volume');
+    if (kind === 'force') { if (unit === 'kg (mass)') return U.massToWeight(val, 'kg', pu.baseF); if (unit === 'g (mass)') return U.massToWeight(val, 'g', pu.baseF); return U.convert(val, unit, pu.baseF, 'force'); }
+    if (kind === 'unitWeight') { if (unit === 'Mg/m³ (density)') return U.densityToUnitWeight(val, 'Mg/m³', pu.baseG); if (unit === 'g/cm³ (density)') return U.densityToUnitWeight(val, 'g/cm³', pu.baseG); return U.convert(val, unit, pu.baseG, 'unitWeight'); }
+  }
+
+  function phaseSolver(host) {
+    var s = sys(), pu = phaseUnits(s), VARS = SM.phase.VARS;
+    host._sys = s;
+    function field(k) {
+      var kind = VARS[k].kind, opts = kind === 'ratio' ? ['%', 'decimal'] : kind === 'none' ? [] : pu[kind];
+      return '<label class="pf" data-k="' + k + '"><span>' + X.symHTML(k) + ' <small>' + VARS[k].label + '</small></span><span class="pin"><input type="text" inputmode="decimal" data-k="' + k + '" autocomplete="off">' +
+        (opts.length ? '<select data-k="' + k + '">' + opts.map(function (o) { return '<option>' + o + '</option>'; }).join('') + '</select>' : '') + '</span><output data-k="' + k + '"></output></label>';
+    }
+    host.innerHTML = '<div class="lab-intro"><p>Enter <b>only the quantities you know</b>. Leave the rest blank. Active units: <b class="sysbadge">' + s + '</b> (γw = ' + pu.gw + ' ' + pu.baseG + '). Ratios accept % or decimal. In SI, weights may be entered as masses (converted with W = mg). The solver never assumes a missing property: if the data are not enough, it says so.</p></div>' +
+      '<div class="phase-lab"><div class="pcol"><h4>Volumes</h4>' + ['Va', 'Vw', 'Vs', 'Vv', 'V'].map(field).join('') + '</div>' +
+      '<div class="pdiag" aria-live="polite"></div>' +
+      '<div class="pcol"><h4>Weights</h4>' + ['Ww', 'Ws', 'W'].map(field).join('') + '<h4>Ratios &amp; unit weights</h4>' + ['w', 'e', 'n', 'S', 'Gs', 'g', 'gd', 'gsat', 'gsub'].map(field).join('') + '</div></div>' +
+      '<div class="pp-tools"><button class="btn primary which" type="button">1 · Which unknowns can be found?</button><button class="btn step1" type="button">2 · Reveal next calculation</button><button class="btn allsteps" type="button">Reveal all</button><button class="btn ghost ex" type="button">Load a random example</button><button class="btn ghost clr" type="button">Clear</button></div>' +
+      '<div class="pstatus" aria-live="polite"></div><ol class="psteps"></ol>';
+    var diag = host.querySelector('.pdiag'), status = host.querySelector('.pstatus'), stepsEl = host.querySelector('.psteps');
+    var result = null, shown = 0;
+    function read() {
+      var known = {}, bad = [];
+      host.querySelectorAll('input[data-k]').forEach(function (inp) {
+        var k = inp.dataset.k; if (!inp.value.trim()) return;
+        var x = U.parseNumber(inp.value); if (isNaN(x)) { bad.push(VARS[k].label); return; }
+        var sel = host.querySelector('select[data-k="' + k + '"]');
+        known[k] = toBase(x, sel ? sel.value : '', VARS[k].kind, pu);
+      });
+      return { known: known, bad: bad };
+    }
+    function draw(vals, knownKeys, reveal) {
+      diag.innerHTML = SM.diagrams.phase({ vals: vals || {}, units: { V: pu.baseV, F: pu.baseF }, known: knownKeys || [], reveal: reveal });
+    }
+    function outFmt(k, v) { var kind = VARS[k].kind; if (kind === 'ratio') return U.fmt(v * 100, 4) + ' %'; if (kind === 'none') return U.fmt(v, 4); return U.fmt(v, 4) + ' ' + (kind === 'volume' ? pu.baseV : kind === 'force' ? pu.baseF : pu.baseG); }
+    function analyse() {
+      var r = read();
+      host.querySelectorAll('output').forEach(function (o) { o.textContent = ''; o.className = ''; });
+      stepsEl.innerHTML = ''; shown = 0;
+      if (r.bad.length) { status.className = 'pstatus invalid'; status.innerHTML = 'Could not read: ' + r.bad.join(', ') + '.'; result = null; return; }
+      result = SM.phase.solve(r.known, pu.gw);
+      result.knownKeys = Object.keys(r.known);
+      if (result.status === 'invalid') { status.className = 'pstatus invalid'; status.innerHTML = '<b>Invalid input — physically impossible or contradictory.</b><ul>' + result.errors.map(function (e) { return '<li>' + e + '</li>'; }).join('') + '</ul>'; draw({}, []); return; }
+      var found = result.steps.map(function (st) { return st.target; });
+      var msg = result.status === 'ok' ? '<b>Enough information:</b> every quantity can be found.' : '<b>Insufficient information</b> (not invalid): ' + result.message;
+      status.className = 'pstatus ' + (result.status === 'ok' ? 'ok' : 'insufficient');
+      status.innerHTML = msg + (found.length ? '<div>Can be found from your data (' + found.length + '): ' + found.map(function (k) { return X.symHTML(k); }).join(', ') + '. Try computing them yourself, then reveal the calculations one at a time.</div>' : '') +
+        (result.warnings.length ? '<div class="warn">' + result.warnings.join('<br>') + '</div>' : '');
+      found.forEach(function (k) { var o = host.querySelector('output[data-k="' + k + '"]'); if (o) { o.textContent = '?'; o.className = 'pending'; } });
+      draw({}, []);
+    }
+    function reveal(all) {
+      if (!result) analyse();
+      if (!result || result.status === 'invalid') return;
+      var n = all ? result.steps.length : Math.min(shown + 1, result.steps.length);
+      for (var i = shown; i < n; i++) {
+        var st = result.steps[i];
+        stepsEl.insertAdjacentHTML('beforeend', '<li><div class="muted small">' + st.relationName + '</div>' + st.symbolic + '<br>' + st.substituted + ' = <b>' + outFmt(st.target, st.value) + '</b></li>');
+        var o = host.querySelector('output[data-k="' + st.target + '"]'); if (o) { o.textContent = '= ' + outFmt(st.target, st.value); o.className = 'solved'; }
+      }
+      shown = n;
+      var vals = {}; Object.keys(result.values).forEach(function (k) { vals[k] = result.values[k]; });
+      var visible = result.knownKeys.concat(result.steps.slice(0, shown).map(function (s) { return s.target; }));
+      var vv = {}; visible.forEach(function (k) { vv[k] = vals[k]; });
+      draw(Object.assign({}, vals), visible, false);
+      if (shown === result.steps.length && result.steps.length) stepsEl.insertAdjacentHTML('beforeend', '<li class="done">All determinable quantities found.' + (result.status !== 'ok' ? ' Remaining unknowns cannot be found without more data.' : '') + '</li>');
+    }
+    host.addEventListener('click', function (ev) {
+      var t = ev.target;
+      if (t.closest('.which')) analyse();
+      else if (t.closest('.step1')) reveal(false);
+      else if (t.closest('.allsteps')) reveal(true);
+      else if (t.closest('.clr')) { host.querySelectorAll('input').forEach(function (i) { i.value = ''; }); status.innerHTML = ''; stepsEl.innerHTML = ''; result = null; draw({}, []); host.querySelectorAll('output').forEach(function (o) { o.textContent = ''; }); }
+      else if (t.closest('.ex')) {
+        host.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+        var Gs = rnd([2.65, 2.68, 2.7, 2.72]), e = U.roundTo(0.5 + Math.random() * 0.5, 2), S_ = U.roundTo(0.4 + Math.random() * 0.55, 2);
+        var Vt = s === 'SI' ? U.roundTo(0.002 + Math.random() * 0.004, 4) : U.roundTo(0.05 + Math.random() * 0.15, 3);
+        var st = SM.phase.stateFrom(Gs, e, S_, Vt / (1 + e), pu.gw);
+        var combos = [['V', 'W', 'Ws', 'Gs'], ['W', 'V', 'w', 'Gs'], ['w', 'Gs', 'S'], ['g', 'w', 'Gs'], ['gd', 'S', 'Gs'], ['e', 'w', 'Gs', 'V']];
+        var combo = rnd(combos);
+        combo.forEach(function (k) {
+          var inp = host.querySelector('input[data-k="' + k + '"]'), sel = host.querySelector('select[data-k="' + k + '"]');
+          if (sel) sel.selectedIndex = 0;
+          var v = st[k]; if (VARS[k].kind === 'ratio') v *= 100;
+          inp.value = String(U.roundSig(v, 4));
+        });
+        analyse();
+      }
+    });
+    host.addEventListener('input', function () { result = null; });
+    draw({}, []);
+  }
+
+  function phaseExplore(host) {
+    host.innerHTML = '<div class="lab-intro"><p>Pick what physically happens to the soil. The tool states what is <b>held fixed</b>, and the slider range is limited so the settings can never contradict each other. For example, S can never exceed 100 %. The sample is drawn with <b>Vs = 1</b>, so the solids never change.</p></div>' +
+      '<div class="ex-ctl"><label>Process <select class="mode"><option value="A">Add or remove water at constant volume</option><option value="B">Compress or loosen with constant water content</option><option value="C">Saturated soil: change the void ratio</option></select></label>' +
+      '<label>Gs <input class="gs" type="number" step="0.01" min="2" max="3.2" value="2.70"></label><label class="fixA">Fixed e <input class="fe" type="number" step="0.01" min="0.2" max="3" value="0.75"></label><label class="fixB" hidden>Fixed w (%) <input class="fw" type="number" step="0.5" min="0" max="80" value="18"></label></div>' +
+      '<div class="ex-slider"><label><span class="slabel"></span> <input type="range" class="sl" min="0" max="1000" value="500"></label> <output class="sv"></output></div>' +
+      '<div class="ex-body"><div class="ex-diag"></div><div><p class="fixed"></p><table class="ex-tab"></table></div></div>';
+    var gw = phaseUnits(sys()).gw, uw = phaseUnits(sys()).baseG;
+    function upd() {
+      var m = host.querySelector('.mode').value, Gs = Math.min(3.2, Math.max(2, +host.querySelector('.gs').value || 2.7));
+      host.querySelector('.fixA').hidden = m !== 'A'; host.querySelector('.fixB').hidden = m !== 'B';
+      var t = +host.querySelector('.sl').value / 1000, e, S, fixedTxt, lim = '';
+      if (m === 'A') { e = Math.max(0.2, +host.querySelector('.fe').value || 0.75); S = t; fixedTxt = 'Held fixed: Gs, Vs, e (hence V and Vv). Changing: the volume of water → S and w.'; lim = 'S runs from 0 to 100 %; w can rise only to e/Gs = ' + U.fmt(e / Gs * 100, 3) + ' %.'; host.querySelector('.slabel').textContent = 'Degree of saturation S'; }
+      else if (m === 'B') { var w = Math.max(0, (+host.querySelector('.fw').value || 0) / 100); var emin = Math.max(w * Gs, 0.2), emax = 2.0; e = emin + t * (emax - emin); S = w * Gs / e; fixedTxt = 'Held fixed: Gs, Vs, Ws and Ww (so w). Changing: the void ratio, i.e. compression or loosening of the skeleton (air is expelled or drawn in).'; lim = 'e cannot go below wGs = ' + U.fmt(w * Gs, 3) + ', because S would exceed 100 %. The slider stops there.'; host.querySelector('.slabel').textContent = 'Void ratio e'; }
+      else { e = 0.3 + t * 1.7; S = 1; fixedTxt = 'Held fixed: Gs, Vs and S = 100 %. Changing: e; water fills all voids, so w = e/Gs changes with e.'; lim = 'Every value of e is allowed, because the soil stays saturated.'; host.querySelector('.slabel').textContent = 'Void ratio e'; }
+      var st = SM.phase.stateFrom(Gs, e, S, 1, gw);
+      host.querySelector('.sv').textContent = m === 'A' ? 'S = ' + U.fmt(S * 100, 3) + ' %' : 'e = ' + U.fmt(e, 3);
+      host.querySelector('.ex-diag').innerHTML = SM.diagrams.phase({ vals: st, units: { V: '(×Vs)', F: uw.replace('/', '·') }, reveal: true, labels: { Vs: 'Vs = 1', Vv: 'Vv = e = ' + U.fmt(e, 3), V: 'V = 1 + e = ' + U.fmt(1 + e, 3), Vw: 'Vw = Se = ' + U.fmt(S * e, 3), Va: 'Va = ' + U.fmt((1 - S) * e, 3), Ws: 'Ws = Gsγw = ' + U.fmt(st.Ws, 4), Ww: 'Ww = ' + U.fmt(st.Ww, 4), W: 'W = ' + U.fmt(st.W, 4) } });
+      host.querySelector('.fixed').innerHTML = '<b>' + fixedTxt + '</b><br><span class="muted">' + lim + '</span>';
+      var rows = [['e', U.fmt(e, 4)], ['n', U.fmt(st.n * 100, 4) + ' %'], ['w', U.fmt(st.w * 100, 4) + ' %'], ['S', U.fmt(S * 100, 4) + ' %'], ['g', U.fmt(st.g, 4) + ' ' + uw], ['gd', U.fmt(st.gd, 4) + ' ' + uw], ['gsat', U.fmt(st.gsat, 4) + ' ' + uw], ['gsub', U.fmt(st.gsub, 4) + ' ' + uw]];
+      host.querySelector('.ex-tab').innerHTML = rows.map(function (r) { return '<tr><th>' + X.symHTML(r[0]) + '</th><td>' + r[1] + '</td></tr>'; }).join('');
+    }
+    host.addEventListener('input', upd); host.addEventListener('change', upd); upd();
+  }
+
+  /* =================================================================== PERMEABILITY LAB */
+  V.perm = function (sec) {
+    sec.innerHTML = '<div class="tabs" role="tablist"><button class="tab active" data-t="ch" role="tab">Constant-head test</button><button class="tab" data-t="fh" role="tab">Falling-head test</button><button class="tab" data-t="ly" role="tab">Layered soils</button></div>' +
+      '<div class="tabpanel" data-p="ch"></div><div class="tabpanel" data-p="fh" hidden></div><div class="tabpanel" data-p="ly" hidden></div>';
+    sec.querySelector('.tabs').addEventListener('click', function (ev) {
+      var b = ev.target.closest('.tab'); if (!b) return;
+      sec.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('active', x === b); });
+      sec.querySelectorAll('.tabpanel').forEach(function (p) { p.hidden = p.dataset.p !== b.dataset.t; });
+    });
+    constantHeadLab(sec.querySelector('[data-p=ch]')); fallingHeadLab(sec.querySelector('[data-p=fh]')); layersLab(sec.querySelector('[data-p=ly]'));
+  };
+  function slider(name, label, min, max, step, val, unit, log) {
+    return '<label class="sl-row"><span>' + label + '</span><input type="range" data-n="' + name + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '"' + (log ? ' data-log="1"' : '') + '><output data-o="' + name + '"></output><small>' + unit + '</small></label>';
+  }
+  function readSl(host) {
+    var o = {};
+    host.querySelectorAll('input[type=range][data-n]').forEach(function (r) { var v = +r.value; o[r.dataset.n] = r.dataset.log ? Math.pow(10, v) : v; var out = host.querySelector('output[data-o="' + r.dataset.n + '"]'); if (out) out.textContent = U.fmt(o[r.dataset.n], 3); });
+    return o;
+  }
+  function predictBox(host, scenarios, compute) {
+    var box = el('<div class="predict"><h4>Predict before you calculate</h4><p class="pq"></p><div class="popts"></div><div class="fb"></div><button class="btn ghost small another" type="button">Another prediction</button></div>');
+    host.appendChild(box);
+    var choices = [['×4', 4], ['×2', 2], ['unchanged', 1], ['×½', 0.5], ['×¼', 0.25]];
+    function ask() {
+      var sc = rnd(scenarios);
+      box.querySelector('.pq').innerHTML = sc.q;
+      box.querySelector('.fb').innerHTML = ''; box.querySelector('.fb').className = 'fb';
+      box.querySelector('.popts').innerHTML = choices.map(function (c, i) { return '<button class="opt" type="button" data-i="' + i + '">' + c[0] + '</button>'; }).join('');
+      box.querySelector('.popts').onclick = function (ev) {
+        var b = ev.target.closest('.opt'); if (!b) return;
+        var r = compute(sc), pick = choices[+b.dataset.i][1], ok = Math.abs(Math.log(r / pick)) < 0.05;
+        b.classList.add(ok ? 'right' : 'wrong');
+        var fb = box.querySelector('.fb'); fb.className = 'fb ' + (ok ? 'correct' : 'incorrect');
+        fb.innerHTML = (ok ? '✓ ' : '✗ ') + 'Calculated ratio: ' + U.fmt(r, 3) + '. ' + sc.why;
+      };
+    }
+    box.querySelector('.another').addEventListener('click', ask); ask();
+  }
+  function constantHeadLab(host) {
+    host.innerHTML = '<div class="lab2"><div class="ctl">' + slider('h', 'Head difference h', 10, 120, 1, 60, 'cm') + slider('L', 'Specimen length L', 5, 40, 0.5, 20, 'cm') +
+      slider('D', 'Specimen diameter D', 4, 12, 0.1, 7.5, 'cm') + slider('lk', 'Hydraulic conductivity k (log scale)', -4, 0, 0.05, -2, 'cm/s', true) + slider('t', 'Collection time t', 10, 600, 10, 120, 's') +
+      '<div class="results"></div></div><div class="side"><div class="sticky dg-host"></div></div></div>';
+    var res = host.querySelector('.results'), dg = host.querySelector('.dg-host');
+    function upd() {
+      var o = readSl(host), A = Math.PI * o.D * o.D / 4, i = o.h / o.L, q = o.lk * i * A, Q = q * o.t;
+      dg.innerHTML = SM.diagrams.constantHead({ L: o.L, D: o.D, h: o.h, Q: U.fmt(Q, 3), t: o.t });
+      res.innerHTML = '<table class="rtab"><tr><th>Specimen area</th><td>' + X.eqHTML('A', 'pi * dia ^ 2 / 4', { dia: U.fmt(o.D, 3) + ' cm' }) + ' = ' + U.fmt(A, 4) + ' cm²</td></tr>' +
+        '<tr><th>Gradient</th><td>i = h/L = ' + U.fmt(i, 4) + '</td></tr><tr><th>Discharge velocity</th><td>v = ki = ' + U.fmt(o.lk * i, 3) + ' cm/s</td></tr>' +
+        '<tr><th>Discharge rate</th><td>q = kiA = ' + U.fmt(q, 4) + ' cm³/s</td></tr><tr><th>Collected volume</th><td>Q = qt = <b>' + U.fmt(Q, 4) + ' cm³</b></td></tr>' +
+        '<tr><th>Back-calculated k</th><td>k = QL/(Aht) = ' + U.fmt(Q * o.L / (A * o.h * o.t), 4) + ' cm/s (' + SM.perm.classify(o.lk) + ')</td></tr></table>' +
+        (Q < 5 ? '<p class="warn">Less than 5 cm³ collected: this soil is too fine for a practical constant-head test. Use a falling-head test.</p>' : '');
+    }
+    host.addEventListener('input', upd); upd();
+    predictBox(host, [
+      { q: 'If the head difference h is <b>doubled</b>, the volume Q collected in the same time will be…', p: 'h', f: 2, why: 'Q = k(h/L)At ∝ h.' },
+      { q: 'If the specimen length L is <b>doubled</b> (same h), Q in the same time will be…', p: 'L', f: 2, why: 'Q ∝ 1/L: a longer specimen means a smaller gradient.' },
+      { q: 'If the specimen diameter D is <b>doubled</b>, Q will be…', p: 'D', f: 2, why: 'Q ∝ A ∝ D².' },
+      { q: 'If the soil is replaced by one with k <b>half</b> as large, Q will be…', p: 'lk', f: 0.5, why: 'Q ∝ k.' },
+      { q: 'If both h and L are <b>doubled</b>, Q will be…', p: 'hL', f: 2, why: 'i = h/L is unchanged, so Q is unchanged.' }
+    ], function (sc) { if (sc.p === 'hL') return 1; if (sc.p === 'D') return sc.f * sc.f; if (sc.p === 'L') return 1 / sc.f; return sc.f; });
+  }
+  function fallingHeadLab(host) {
+    host.innerHTML = '<div class="lab2"><div class="ctl">' + slider('d', 'Standpipe diameter d', 0.3, 2, 0.05, 1, 'cm') + slider('D', 'Specimen diameter D', 5, 12, 0.1, 7.5, 'cm') + slider('L', 'Specimen length L', 5, 20, 0.5, 10, 'cm') +
+      slider('h1', 'Initial head h₁', 50, 150, 1, 100, 'cm') + slider('lk', 'k (log scale)', -7, -2, 0.05, -4, 'cm/s', true) + slider('tf', 'Elapsed time (fraction of time to reach h₁/2)', 0, 3, 0.01, 1, '× t½') +
+      '<div class="results"></div></div><div class="side"><div class="sticky dg-host"></div></div></div>';
+    var res = host.querySelector('.results'), dg = host.querySelector('.dg-host');
+    function upd() {
+      var o = readSl(host), a = Math.PI * o.d * o.d / 4, A = Math.PI * o.D * o.D / 4;
+      var thalf = a * o.L / (A * o.lk) * Math.log(2), t = o.tf * thalf, h2 = o.h1 * Math.exp(-o.lk * A * t / (a * o.L));
+      var hplot = o.h1 / 2; // diagram shows h2 marker at h1/2 target
+      dg.innerHTML = SM.diagrams.fallingHead({ d: o.d, D: o.D, L: o.L, h1: Math.round(o.h1), h2: U.fmt(h2, 3), t: U.fmt(t, 3), frac: Math.min(1.4, (o.h1 - h2) / (o.h1 - hplot)) * 1 });
+      res.innerHTML = '<table class="rtab"><tr><th>Standpipe area</th><td>a = πd²/4 = ' + U.fmt(a, 4) + ' cm²</td></tr><tr><th>Specimen area</th><td>A = πD²/4 = ' + U.fmt(A, 4) + ' cm² <span class="muted">(A/a = ' + U.fmt(A / a, 3) + ')</span></td></tr>' +
+        '<tr><th>Time for head to halve</th><td>t½ = (aL/Ak)·ln 2 = ' + U.fmt(thalf, 4) + ' s ≈ ' + U.fmt(thalf / 60, 3) + ' min</td></tr>' +
+        '<tr><th>Head at t = ' + U.fmt(t, 4) + ' s</th><td>h = h₁·exp(−kAt/aL) = <b>' + U.fmt(h2, 4) + ' cm</b></td></tr>' +
+        '<tr><th>Back-calculated k</th><td>k = 2.303(aL/At)·log₁₀(h₁/h) = ' + (t > 0 ? U.fmt(2.303 * a * o.L / (A * t) * Math.log10(o.h1 / h2), 4) : '—') + ' cm/s</td></tr></table>' +
+        (thalf > 86400 * 3 ? '<p class="warn">The head takes more than 3 days to halve. Use a thinner standpipe, a shorter specimen, or a flexible-wall test.</p>' : '');
+    }
+    host.addEventListener('input', upd); upd();
+    predictBox(host, [
+      { q: 'The standpipe <b>diameter</b> d is doubled. The time for the head to fall from h₁ to h₂ will be…', p: 'd', why: 't ∝ a ∝ d²: four times as much water must drain.' },
+      { q: 'The specimen <b>length</b> L is doubled. The time to fall from h₁ to h₂ will be…', p: 'L', why: 't = (aL/Ak)ln(h₁/h₂) ∝ L.' },
+      { q: 'The specimen <b>diameter</b> D is doubled. The time to fall from h₁ to h₂ will be…', p: 'D', why: 't ∝ 1/A ∝ 1/D².' },
+      { q: 'A soil with k <b>twice</b> as large is tested. The time to fall from h₁ to h₂ will be…', p: 'k', why: 't ∝ 1/k.' },
+      { q: 'h₁ is doubled and h₂ is doubled too (same ratio). The time will be…', p: 'h', why: 'Only the ratio h₁/h₂ matters.' }
+    ], function (sc) { return { d: 4, L: 2, D: 0.25, k: 0.5, h: 1 }[sc.p]; });
+  }
+  function layersLab(host) {
+    var Ls = [{ H: 1.0, k: 1e-2 }, { H: 0.5, k: 1e-5 }, { H: 1.5, k: 1e-3 }];
+    host.innerHTML = '<div class="lab2"><div class="ctl"><table class="ltab"><thead><tr><th>Layer</th><th>H (m)</th><th>k (cm/s)</th><th></th></tr></thead><tbody></tbody></table>' +
+      '<button class="btn ghost small add" type="button">+ Add layer</button> <label>Flow <select class="dir"><option value="H">parallel to layers (horizontal)</option><option value="V">perpendicular to layers (vertical)</option></select></label>' +
+      '<label class="dhrow">Total head loss across all layers Δh (m) <input class="dh" type="text" value="1.0"></label><div class="results"></div><div class="predict ly-pred"></div></div><div class="side"><div class="sticky dg-host"></div></div></div>';
+    var tb = host.querySelector('tbody');
+    function rows() { tb.innerHTML = Ls.map(function (l, i) { return '<tr data-i="' + i + '"><td>' + (i + 1) + '</td><td><input class="lh" value="' + l.H + '"></td><td><input class="lk" value="' + l.k + '"></td><td>' + (Ls.length > 2 ? '<button class="link rm" type="button" aria-label="remove layer">✕</button>' : '') + '</td></tr>'; }).join(''); }
+    function upd() {
+      var err = [];
+      tb.querySelectorAll('tr').forEach(function (tr) { var i = +tr.dataset.i; var H = U.parseNumber(tr.querySelector('.lh').value), k = U.parseNumber(tr.querySelector('.lk').value); if (!(H > 0) || !(k > 0)) err.push(i + 1); else { Ls[i].H = H; Ls[i].k = k; } });
+      var dir = host.querySelector('.dir').value, res = host.querySelector('.results');
+      host.querySelector('.dg-host').innerHTML = SM.diagrams.layers({ layers: Ls, dir: dir, unit: 'm' });
+      if (err.length) { res.innerHTML = '<p class="pstatus invalid">Layer ' + err.join(', ') + ': H and k must be positive numbers.</p>'; return; }
+      var kh = SM.perm.kHeq(Ls.map(function (l) { return { H: l.H, kH: l.k }; })), kv = SM.perm.kVeq(Ls.map(function (l) { return { H: l.H, kV: l.k }; }));
+      var Ht = Ls.reduce(function (s, l) { return s + l.H; }, 0), h = '';
+      h += '<table class="rtab"><tr><th>k_H(eq) = Σ(kᵢHᵢ)/H</th><td' + (dir === 'H' ? ' class="hl"' : '') + '>' + U.fmt(kh, 4) + ' cm/s</td></tr><tr><th>k_V(eq) = H/Σ(Hᵢ/kᵢ)</th><td' + (dir === 'V' ? ' class="hl"' : '') + '>' + U.fmt(kv, 4) + ' cm/s</td></tr><tr><th>k_H(eq)/k_V(eq)</th><td>' + U.fmt(kh / kv, 4) + '</td></tr></table>';
+      var dh = U.parseNumber(host.querySelector('.dh').value);
+      if (dir === 'V') {
+        host.querySelector('.dhrow').hidden = false;
+        if (dh > 0) {
+          var R = Ls.map(function (l) { return l.H / l.k; }), Rs = R.reduce(function (a, b) { return a + b; }, 0);
+          h += '<p><b>Head loss in each layer</b>. The same v passes through every layer, so Δhᵢ = vHᵢ/kᵢ ∝ Hᵢ/kᵢ:</p>' + Ls.map(function (l, i) { var d = dh * R[i] / Rs; return '<div class="bar"><span>Layer ' + (i + 1) + '</span><span class="barfill" style="width:' + Math.max(1, 100 * R[i] / Rs) + '%"></span><span>' + U.fmt(d, 3) + ' m (i = ' + U.fmt(d / l.H, 3) + ')</span></div>'; }).join('') +
+            '<p class="muted">Discharge velocity v = k_V(eq)·Δh/H = ' + U.fmt(kv * dh / Ht, 3) + ' cm/s (Δh/H is dimensionless).</p>';
+        } else h += '<p class="pstatus invalid">Enter a positive head loss.</p>';
+      } else {
+        host.querySelector('.dhrow').hidden = true;
+        var tot = Ls.reduce(function (s, l) { return s + l.k * l.H; }, 0);
+        h += '<p><b>Share of the horizontal flow carried by each layer</b> (same i in every layer, so qᵢ ∝ kᵢHᵢ):</p>' + Ls.map(function (l, i) { var f = l.k * l.H / tot; return '<div class="bar"><span>Layer ' + (i + 1) + '</span><span class="barfill" style="width:' + Math.max(1, 100 * f) + '%"></span><span>' + U.fmt(f * 100, 3) + ' %</span></div>'; }).join('');
+      }
+      res.innerHTML = h;
+    }
+    rows();
+    host.addEventListener('input', upd); host.addEventListener('change', upd);
+    host.addEventListener('click', function (ev) {
+      if (ev.target.closest('.add') && Ls.length < 5) { Ls.push({ H: 1, k: 1e-4 }); rows(); upd(); }
+      var rm = ev.target.closest('.rm'); if (rm) { Ls.splice(+rm.closest('tr').dataset.i, 1); rows(); upd(); }
+    });
+    upd();
+    var pred = host.querySelector('.ly-pred');
+    pred.innerHTML = '<h4>Predict</h4><p>Before reading the results: which equivalent k is <b>closer to the smallest</b> layer k?</p><div class="popts"><button class="opt" type="button" data-a="H">k_H(eq), parallel flow</button><button class="opt" type="button" data-a="V">k_V(eq), perpendicular flow</button></div><div class="fb"></div>';
+    pred.addEventListener('click', function (ev) { var b = ev.target.closest('.opt'); if (!b) return; var ok = b.dataset.a === 'V'; b.classList.add(ok ? 'right' : 'wrong'); var f = pred.querySelector('.fb'); f.className = 'fb ' + (ok ? 'correct' : 'incorrect'); f.innerHTML = (ok ? '✓ ' : '✗ ') + 'For perpendicular flow, the layers act in series: the least permeable layer throttles everything. For parallel flow, the layers act side by side, and the most permeable layer dominates.'; });
+  }
+
+  /* =================================================================== PRACTICE */
+  V.practice = function (sec) {
+    var topics = {}; SM.templates.forEach(function (t) { topics[t.topic] = 1; });
+    sec.innerHTML = '<div class="toolbar"><label>Chapter <select class="ch"><option value="">All</option><option value="3">Ch. 3</option><option value="7">Ch. 7</option><option value="X">Combined</option></select></label>' +
+      '<label>Problem <select class="tp"></select></label>' +
+      '<label>Mode <select class="md"><option value="guided">Guided: hints + step checks</option><option value="independent">Independent: solution after submit</option><option value="socratic">Socratic: one question at a time</option></select></label>' +
+      '<button class="btn primary go" type="button">New problem</button></div><div class="practice-host"></div>';
+    var chSel = sec.querySelector('.ch'), tpSel = sec.querySelector('.tp'), mdSel = sec.querySelector('.md');
+    function fillTp() {
+      var c = chSel.value;
+      tpSel.innerHTML = '<option value="">Random</option>' + SM.templates.filter(function (t) { return !c || String(t.chapter) === c; }).map(function (t) { return '<option value="' + t.id + '">' + ui.chLabel(t.chapter) + ' · ' + esc(t.title) + '</option>'; }).join('');
+    }
+    chSel.addEventListener('change', fillTp); fillTp();
+    sec.querySelector('.go').addEventListener('click', function () {
+      var pool = SM.templates.filter(function (t) { return !chSel.value || String(t.chapter) === chSel.value; });
+      var tid = tpSel.value || rnd(pool).id;
+      SM.store.setCurrent('practice', { tid: tid, seed: PB.newSeed(), sys: sys(), mode: mdSel.value });
+      V.practiceMount(sec);
+    });
+    mdSel.addEventListener('change', function () { var cur = SM.store.getCurrent('practice'); if (cur) { cur.mode = mdSel.value; SM.store.setCurrent('practice', cur); V.practiceMount(sec); } });
+    V.practiceMount(sec);
+  };
+  V.practiceMount = function (sec) {
+    var host = sec.querySelector('.practice-host'), cur = SM.store.getCurrent('practice');
+    if (!cur || !SM.templateById(cur.tid)) { host.innerHTML = '<p class="muted">Choose a chapter and press <b>New problem</b>, or pick a specific problem type. Your answers are saved as you type.</p>'; return; }
+    sec.querySelector('.md').value = cur.mode;
+    host.innerHTML = '';
+    host.appendChild(ui.ProblemPlayer(PB.build(SM.templateById(cur.tid), cur.seed, cur.sys), { mode: cur.mode,
+      onNew: function () { cur.seed = PB.newSeed(); cur.sys = sys(); SM.store.setCurrent('practice', cur); V.practiceMount(sec); },
+      onMode: function (m) { cur.mode = m; SM.store.setCurrent('practice', cur); V.practiceMount(sec); } }));
+  };
+  V.practiceOpen = function (tid, mode) {
+    SM.store.setCurrent('practice', { tid: tid, seed: PB.newSeed(), sys: sys(), mode: mode || 'guided' });
+    location.hash = '#/practice';
+    var sec = document.getElementById('view-practice'); if (sec && sec._rendered) V.practiceMount(sec);
+  };
+
+  /* =================================================================== MIXED REVIEW */
+  V.review = function (sec) {
+    var tally = { n: 0, c: 0 };
+    sec.innerHTML = '<div class="toolbar"><label>Coverage <select class="ch"><option value="">Both chapters</option><option value="3">Ch. 3 only</option><option value="7">Ch. 7 only</option></select></label><button class="btn primary nx" type="button">Next question</button><span class="tally"></span></div>' +
+      '<p class="muted">Questions are mixed. Numerical problems first ask you to <b>identify the method</b>; titles are hidden so the method is not given away.</p><div class="review-host"></div>';
+    var host = sec.querySelector('.review-host');
+    function next() {
+      var c = sec.querySelector('.ch').value;
+      host.innerHTML = '';
+      var useConcept = Math.random() < 0.45;
+      if (useConcept) {
+        var qs = SM.concepts.filter(function (q) { return !c || String(q.chapter) === c || q.chapter === 'X'; });
+        host.appendChild(ui.MCQ(rnd(qs), { onAnswer: function (ok) { tally.n++; if (ok) tally.c++; show(); } }));
+        return;
+      }
+      var pool = SM.templates.filter(function (t) { return !c || String(t.chapter) === c || t.chapter === 'X'; });
+      var t = rnd(pool), P = PB.build(t, PB.newSeed(), sys());
+      var others = SM.templates.filter(function (o) { return o.method && o.method !== t.method; });
+      var opts = [t.method]; var guard = 0;
+      while (opts.length < 4 && guard++ < 50) { var m = rnd(others).method; if (opts.indexOf(m) < 0) opts.push(m); }
+      opts = opts.sort(function () { return Math.random() - 0.5; });
+      var q = el('<div class="mcq"><div class="pp-head"><span class="badge">' + ui.chLabel(t.chapter) + '</span> <span class="badge alt">Choose the method</span></div><p class="mq-prompt">' + P.text + '</p><p><b>Which approach applies?</b></p><div class="mq-opts">' +
+        opts.map(function (o, k) { return '<button class="opt" type="button" data-k="' + k + '">' + esc(o) + '</button>'; }).join('') + '</div><div class="fb"></div></div>');
+      host.appendChild(q);
+      var first = true;
+      q.addEventListener('click', function (ev) {
+        var b = ev.target.closest('.opt'); if (!b || q.dataset.done) return;
+        var ok = opts[+b.dataset.k] === t.method;
+        b.classList.add(ok ? 'right' : 'wrong');
+        if (first) { tally.n++; if (ok) tally.c++; show(); SM.store.recordConcept('method:' + t.id, ok, t.chapter, t.topic); if (!ok) SM.store.recordMistake({ templateId: t.id, chapter: t.chapter, part: 'Method selection', tag: 'formula', msg: 'Chose “' + opts[+b.dataset.k] + '” instead of “' + t.method + '”.' }); }
+        first = false;
+        var fb = q.querySelector('.fb');
+        if (ok) {
+          q.dataset.done = 1; fb.className = 'fb correct'; fb.innerHTML = '✓ Right method. Now solve it:';
+          host.appendChild(ui.ProblemPlayer(P, { mode: 'guided', hideTitle: true, allowSocratic: false }));
+        } else { fb.className = 'fb incorrect'; fb.innerHTML = '✗ Not the best fit. Re-read what is given and what is asked, then try again.'; }
+      });
+    }
+    function show() { sec.querySelector('.tally').textContent = tally.n ? 'Session: ' + tally.c + '/' + tally.n + ' first-try correct' : ''; }
+    sec.querySelector('.nx').addEventListener('click', next);
+    next();
+  };
+
+  /* =================================================================== MOCK EXAM */
+  V.exam = function (sec) {
+    sec.innerHTML = '<div class="panel exam-cfg"><h3>Configure a mock exam</h3>' +
+      '<fieldset><legend>Coverage</legend><label><input type="checkbox" class="c3" checked> Chapter 3</label> <label><input type="checkbox" class="c7" checked> Chapter 7</label> <label><input type="checkbox" class="cx" checked> Combined problems</label></fieldset>' +
+      '<label>Difficulty <select class="df"><option value="">Mixed</option><option value="1">Basic (●○○)</option><option value="2">Intermediate (●●○)</option><option value="3">Challenging (●●●)</option></select></label>' +
+      '<label>Numerical problems <input type="number" class="nn" min="1" max="12" value="4"></label><label>Concept questions <input type="number" class="nc" min="0" max="15" value="4"></label>' +
+      '<label>Timer (minutes; 0 = untimed) <input type="number" class="tm" min="0" max="240" value="50"></label>' +
+      '<label><input type="checkbox" class="fs" checked> Formula sheet allowed</label>' +
+      '<button class="btn primary start" type="button">Start exam</button><p class="muted small">During the exam there are no hints or answer checks. Everything is graded with partial credit when you submit or when time runs out.</p></div><div class="exam-host"></div>';
+    var host = sec.querySelector('.exam-host');
+    sec.querySelector('.start').addEventListener('click', function () {
+      var chs = []; if (sec.querySelector('.c3').checked) chs.push(3); if (sec.querySelector('.c7').checked) chs.push(7); if (sec.querySelector('.cx').checked) chs.push('X');
+      if (!chs.length) { alert('Choose at least one chapter.'); return; }
+      var df = sec.querySelector('.df').value, nn = Math.max(0, +sec.querySelector('.nn').value || 0), nc = Math.max(0, +sec.querySelector('.nc').value || 0);
+      var pool = SM.templates.filter(function (t) { return chs.indexOf(t.chapter) >= 0 && (!df || String(t.difficulty) === df); });
+      if (!pool.length) pool = SM.templates.filter(function (t) { return chs.indexOf(t.chapter) >= 0; });
+      var picks = pool.sort(function () { return Math.random() - 0.5; }).slice(0, nn);
+      var cpool = SM.concepts.filter(function (q) { return chs.indexOf(q.chapter) >= 0; }).sort(function () { return Math.random() - 0.5; }).slice(0, nc);
+      runExam(host, picks, cpool, +sec.querySelector('.tm').value || 0, sec.querySelector('.fs').checked, chs);
+      sec.querySelector('.exam-cfg').hidden = true;
+    });
+  };
+  function runExam(host, tpls, qs, minutes, formulas, chs) {
+    host.innerHTML = '<div class="exam-bar"><span class="timer" aria-live="off"></span>' + (formulas ? '<button class="btn ghost fsb" type="button">Formula sheet</button>' : '<span class="muted">No formula sheet</span>') + '<button class="btn primary sub" type="button">Submit exam</button></div><div class="exam-qs"></div><div class="exam-res"></div>';
+    var list = host.querySelector('.exam-qs'), items = [], k = 0;
+    tpls.forEach(function (t) { var P = PB.build(t, PB.newSeed(), sys()); var w = el('<div class="exam-q"><h4>Question ' + (++k) + ' <small class="muted">(' + P.parts.length + ' parts)</small></h4></div>'); var n = ui.ProblemPlayer(P, { mode: 'exam', hideTitle: true }); w.appendChild(n); list.appendChild(w); items.push({ node: n, weight: 2 }); });
+    qs.forEach(function (q) { var w = el('<div class="exam-q"><h4>Question ' + (++k) + '</h4></div>'); var n = ui.MCQ(q, { exam: true }); w.appendChild(n); list.appendChild(w); items.push({ node: n, weight: 1 }); });
+    var end = minutes ? Date.now() + minutes * 60000 : 0, iv = null, done = false;
+    function tick() {
+      if (!end) { host.querySelector('.timer').textContent = 'Untimed'; return; }
+      var r = Math.max(0, end - Date.now()), m = Math.floor(r / 60000), s = Math.floor(r % 60000 / 1000);
+      host.querySelector('.timer').textContent = '⏱ ' + m + ':' + (s < 10 ? '0' : '') + s + ' left';
+      host.querySelector('.timer').classList.toggle('low', r < 5 * 60000);
+      if (r <= 0) submit(true);
+    }
+    function submit(timeout) {
+      if (done) return; done = true; if (iv) clearInterval(iv);
+      var tot = 0, wt = 0;
+      items.forEach(function (it) { var s = it.node.grade(); tot += s * it.weight; wt += it.weight; });
+      var pct = wt ? tot / wt : 0;
+      SM.store.recordExam({ time: Date.now(), score: pct, n: items.length, chapters: chs });
+      host.querySelector('.exam-res').innerHTML = '<div class="scorebox big">' + (timeout ? 'Time is up. ' : '') + 'Exam score (numerical problems weighted ×2, partial credit included): <b>' + Math.round(pct * 100) + ' %</b>. Each question shows feedback and a worked solution. Missed concepts were added to <a href="#/mistakes">Mistake review</a>.</div>';
+      host.querySelector('.sub').disabled = true;
+      host.querySelector('.exam-res').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    host.querySelector('.sub').addEventListener('click', function () { if (confirm('Submit the exam for grading?')) submit(false); });
+    var fsb = host.querySelector('.fsb'); if (fsb) fsb.addEventListener('click', function () { SM.app.openFormulaDrawer(chs); });
+    tick(); if (end) iv = setInterval(tick, 1000);
+  }
+
+  /* =================================================================== MISTAKES */
+  V.mistakes = function (sec) {
+    var st = SM.store.get(), open = st.mistakes.filter(function (m) { return !m.resolved; });
+    var byTag = {};
+    open.forEach(function (m) { (byTag[m.tag] = byTag[m.tag] || []).push(m); });
+    var tags = Object.keys(byTag).sort(function (a, b) { return byTag[b].length - byTag[a].length; });
+    sec.innerHTML = '<h2>Mistake review</h2>' + (open.length ? '<p class="muted">Missed concepts, grouped by the kind of error the checker identified. Use <b>Targeted practice</b> to work a fresh problem on exactly that concept.</p>' : '<p class="panel">No open mistakes recorded. Practise and they will appear here, with targeted follow-up problems.</p>') +
+      '<div class="mtags">' + tags.map(function (t) {
+        var ex = byTag[t].slice(0, 3);
+        return '<div class="panel mtag" data-tag="' + esc(t) + '"><h4>' + esc(topicName(t)) + ' <span class="badge">' + byTag[t].length + '</span></h4><ul class="small">' + ex.map(function (m) { return '<li>' + (m.part ? '<b>' + esc(m.part) + ':</b> ' : '') + esc(m.msg) + '</li>'; }).join('') + '</ul>' +
+          '<button class="btn primary small tp" type="button">Targeted practice</button> <button class="btn ghost small rs" type="button">Mark as resolved</button><div class="mt-host"></div></div>';
+      }).join('') + '</div>' + (st.mistakes.length ? '<button class="btn ghost clr" type="button">Clear the whole mistake log</button>' : '');
+    sec.onclick = function (ev) {
+      var box = ev.target.closest('.mtag');
+      if (ev.target.closest('.clr')) { if (confirm('Clear all recorded mistakes?')) { SM.store.clearMistakes(); V.mistakes(sec); } return; }
+      if (!box) return;
+      var tag = box.dataset.tag;
+      if (ev.target.closest('.rs')) { SM.store.resolveMistakes(tag); V.mistakes(sec); return; }
+      if (ev.target.closest('.tp')) {
+        var hostEl = box.querySelector('.mt-host'); hostEl.innerHTML = '';
+        var tids = getTagIndex()[tag] || [], cq = SM.concepts.filter(function (q) { return q.topic === tag; });
+        var concIds = byTag[tag].filter(function (m) { return m.conceptId; }).map(function (m) { return m.conceptId; });
+        if (concIds.length && cq.length) cq = cq.filter(function (q) { return concIds.indexOf(q.id) < 0; }).concat(cq.filter(function (q) { return concIds.indexOf(q.id) >= 0; }));
+        if (tids.length) hostEl.appendChild(ui.ProblemPlayer(PB.build(SM.templateById(rnd(tids)), PB.newSeed(), sys()), { mode: 'guided', allowSocratic: true, onMode: function () {} }));
+        else if (cq.length) hostEl.appendChild(ui.MCQ(cq[0]));
+        else { var tid = byTag[tag][0].templateId; if (tid) hostEl.appendChild(ui.ProblemPlayer(PB.build(SM.templateById(tid), PB.newSeed(), sys()), { mode: 'guided' })); else hostEl.innerHTML = '<p class="muted">No targeted item available; try Mixed review.</p>'; }
+      }
+    };
+  };
+
+  /* =================================================================== FORMULAS & GLOSSARY */
+  function formulaCard(f) {
+    var res = null; try { res = X.evaluate(f.expr, f.example); } catch (e) { res = null; }
+    var exVals = Object.keys(f.example).map(function (k) { return X.symHTML(k) + ' = ' + U.fmt(f.example[k], 4); }).join(', ');
+    var out = res === null ? '' : (f.unit === '%' ? U.fmt(res * 100, 4) + ' %' : U.fmt(res, 4) + (f.unit ? ' ' + f.unit : ''));
+    var sub = {}; Object.keys(f.example).forEach(function (k) { sub[k] = '<span class="sv">' + U.fmt(f.example[k], 4) + '</span>'; });
+    return '<div class="fcard" data-s="' + esc((f.name + ' ' + f.tags + ' ' + f.vars.map(function (v) { return v[1]; }).join(' ')).toLowerCase()) + '" data-ch="' + f.chapter + '"><h4>' + f.name + ' <span class="badge">' + ui.chLabel(f.chapter) + '</span></h4>' +
+      '<div class="eqrow">' + X.eqHTML(f.lhs, f.expr) + '</div><table class="vars small"><tbody>' + f.vars.map(function (v) { return '<tr><td>' + (/^[A-Za-z][A-Za-z0-9]*$/.test(v[0]) ? X.symHTML(v[0]) : esc(v[0])) + '</td><td>' + v[1] + '</td><td>' + v[2] + '</td></tr>'; }).join('') + '</tbody></table>' +
+      '<p class="small"><b>Assumptions:</b> ' + f.assumptions + '<br><b>Applicability:</b> ' + f.applicability + '</p>' +
+      (out ? '<p class="small ex"><b>Example:</b> ' + exVals + ' → ' + X.eqHTML(f.lhs, f.expr, sub) + ' = <b>' + out + '</b></p>' : '') + '</div>';
+  }
+  V.formulaCard = formulaCard;
+  V.formulas = function (sec) {
+    sec.innerHTML = '<div class="toolbar"><input type="search" class="q" placeholder="Search formulas (e.g. porosity, falling, layered)…" aria-label="Search formulas"><select class="ch"><option value="">All chapters</option><option value="3">Ch. 3</option><option value="7">Ch. 7</option></select></div><div class="fgrid">' + SM.formulas.map(formulaCard).join('') + '</div><p class="muted small nores" hidden>No formula matches.</p>';
+    function filt() {
+      var q = sec.querySelector('.q').value.toLowerCase().trim(), c = sec.querySelector('.ch').value, any = false;
+      sec.querySelectorAll('.fcard').forEach(function (n) { var ok = (!q || n.dataset.s.indexOf(q) >= 0) && (!c || n.dataset.ch === c); n.hidden = !ok; any = any || ok; });
+      sec.querySelector('.nores').hidden = any;
+    }
+    sec.addEventListener('input', filt); sec.addEventListener('change', filt);
+  };
+  V.glossary = function (sec) {
+    var items = SM.glossary.slice().sort(function (a, b) { return a.term.localeCompare(b.term); });
+    sec.innerHTML = '<div class="toolbar"><input type="search" class="q" placeholder="Search the glossary…" aria-label="Search glossary"></div><dl class="gloss">' + items.map(function (g) { return '<div class="gi" data-s="' + esc((g.term + ' ' + g.def).toLowerCase()) + '"><dt>' + g.term + '</dt><dd>' + g.def + '</dd></div>'; }).join('') + '</dl><p class="muted small nores" hidden>No term matches.</p>';
+    sec.addEventListener('input', function () { var q = sec.querySelector('.q').value.toLowerCase().trim(), any = false; sec.querySelectorAll('.gi').forEach(function (n) { n.hidden = q && n.dataset.s.indexOf(q) < 0; any = any || !n.hidden; }); sec.querySelector('.nores').hidden = any; });
+  };
+
+  /* =================================================================== PROGRESS */
+  V.progress = function (sec) {
+    var st = SM.store.get();
+    function agg(ch) {
+      var a = { n: 0, c: 0, types: 0 };
+      Object.keys(st.attempts).forEach(function (k) { var t = st.attempts[k]; if (t.chapter == ch) { a.n += t.n; a.c += t.credit; a.types++; } });
+      return a;
+    }
+    var rows = [3, 7, 'X'].map(function (c) { var a = agg(c), total = SM.templates.filter(function (t) { return t.chapter === c; }).length; return '<tr><td>' + ui.chLabel(c) + '</td><td>' + a.types + ' / ' + total + '</td><td>' + a.n + '</td><td>' + (a.n ? Math.round(100 * a.c / a.n) + ' %' : '—') + '</td></tr>'; }).join('');
+    var cN = 0, cC = 0; Object.keys(st.concepts).forEach(function (k) { cN += st.concepts[k].n; cC += st.concepts[k].correct; });
+    var lessonsDone = SM.lessons.filter(function (l) { return st.lessons[l.id] && st.lessons[l.id].done; }).length, visited = SM.lessons.filter(function (l) { return st.lessons[l.id]; }).length;
+    var topics = {}; Object.keys(st.attempts).forEach(function (k) { var t = st.attempts[k]; var tp = t.topic || 'other'; topics[tp] = topics[tp] || { n: 0, c: 0 }; topics[tp].n += t.n; topics[tp].c += t.credit; });
+    sec.innerHTML = '<h2>Progress</h2>' + (SM.store.storageOK() ? '<p class="muted small">Progress is saved only in this browser (localStorage). Export it to move it to another computer or browser.</p>' : '<p class="warn">Browser storage is unavailable (for example, in a private window). Progress will be lost when you close the tab, so export it before leaving.</p>') +
+      '<div class="cards stat"><div class="card"><h4>Lessons</h4><p>' + lessonsDone + ' practised · ' + visited + ' visited · ' + SM.lessons.length + ' total</p></div><div class="card"><h4>Concept questions</h4><p>' + (cN ? Math.round(100 * cC / cN) + ' % first-try (' + cN + ' answered)' : 'none yet') + '</p></div><div class="card"><h4>Open mistakes</h4><p>' + st.mistakes.filter(function (m) { return !m.resolved; }).length + '</p></div><div class="card"><h4>Mock exams</h4><p>' + (st.exams.length ? st.exams.slice(0, 5).map(function (e) { return Math.round(e.score * 100) + ' %'; }).join(', ') : 'none yet') + '</p></div></div>' +
+      '<table class="rtab"><thead><tr><th>Chapter</th><th>Problem types tried</th><th>Attempts</th><th>Average score</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<h3>By topic</h3><table class="rtab"><tbody>' + Object.keys(topics).map(function (t) { return '<tr><td>' + esc(topicName(t)) + '</td><td>' + topics[t].n + ' attempts</td><td>' + Math.round(100 * topics[t].c / topics[t].n) + ' %</td></tr>'; }).join('') + '</tbody></table>' +
+      '<div class="pp-tools"><button class="btn exp" type="button">Export progress (JSON)</button><label class="btn ghost">Import progress <input type="file" accept="application/json,.json" class="imp" hidden></label><button class="btn danger rst" type="button">Reset all progress</button></div>';
+    sec.querySelector('.exp').onclick = function () {
+      var blob = new Blob([SM.store.exportJSON()], { type: 'application/json' }), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'soil-mechanics-progress-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    };
+    sec.querySelector('.imp').onchange = function (ev) {
+      var f = ev.target.files[0]; if (!f) return; var r = new FileReader();
+      r.onload = function () { try { SM.store.importJSON(r.result); alert('Progress imported.'); V.progress(sec); } catch (e) { alert('Import failed: ' + e.message); } };
+      r.readAsText(f);
+    };
+    sec.querySelector('.rst').onclick = function () { if (confirm('Erase all saved progress, drafts and mistakes in this browser? This cannot be undone.')) { SM.store.reset(); location.reload(); } };
+  };
+
+  SM.views = V;
+})(typeof window !== 'undefined' ? window : globalThis);
