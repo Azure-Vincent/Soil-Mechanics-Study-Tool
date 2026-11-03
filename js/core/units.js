@@ -23,6 +23,7 @@
     pressure: { kPa: 1000, Pa: 1, 'kN/m²': 1000, psf: 47.880258980, psi: 6894.7572932, 'lb/ft²': 47.880258980, 'lb/in²': 6894.7572932 },
     viscosity:{ 'Pa·s': 1, 'N·s/m²': 1, 'g/(cm·s)': 0.1, poise: 0.1, cP: 0.001 },
     permeability: { 'm²': 1, 'cm²': 1e-4, darcy: 9.869233e-13 },
+    transmissivity: { 'm²/s': 1, 'm²/day': 1 / 86400, 'ft²/day': 0.09290304 / 86400, 'ft²/min': 0.09290304 / 60, 'cm²/s': 1e-4 },
     temperature: { '°C': 1 },
     ratio:    { decimal: 1, '%': 0.01 },
     none:     { '': 1 }
@@ -32,7 +33,7 @@
   // reached through an explicit dim argument.
   var UNIT_DIM = {};
   Object.keys(DIMS).forEach(function (d) {
-    if (d === 'permeability') return;
+    if (d === 'permeability' || d === 'transmissivity') return;
     Object.keys(DIMS[d]).forEach(function (u) { if (!(u in UNIT_DIM)) UNIT_DIM[u] = d; });
   });
 
@@ -51,12 +52,12 @@
           force: ['kN', 'N', 'lb'], mass: ['kg', 'g', 'Mg', 'lbm'], unitWeight: ['kN/m³', 'N/m³', 'lb/ft³'], density: ['kg/m³', 'g/cm³', 'Mg/m³'],
           velocity: ['cm/s', 'm/s', 'mm/s', 'm/day', 'ft/min', 'ft/day'], flow: ['cm³/s', 'm³/s', 'L/s', 'L/min', 'm³/h', 'm³/day', 'ft³/min'],
           time: ['s', 'min', 'h', 'day'], pressure: ['kPa', 'Pa', 'psf'], viscosity: ['Pa·s', 'g/(cm·s)', 'cP'],
-          permeability: ['cm²', 'm²', 'darcy'], ratio: ['%', 'decimal'], none: [''], temperature: ['°C'] },
+          permeability: ['cm²', 'm²', 'darcy'], transmissivity: ['m²/day', 'm²/s', 'ft²/day'], ratio: ['%', 'decimal'], none: [''], temperature: ['°C'] },
     US: { length: ['ft', 'in', 'm', 'cm'], area: ['ft²', 'in²', 'm²', 'cm²'], volume: ['ft³', 'in³', 'gal', 'm³', 'cm³'],
           force: ['lb', 'kip', 'kN'], mass: ['lbm', 'kg', 'g'], unitWeight: ['lb/ft³', 'kN/m³'], density: ['lbm/ft³', 'kg/m³', 'g/cm³'],
           velocity: ['ft/min', 'ft/s', 'ft/day', 'cm/s', 'm/s'], flow: ['ft³/min', 'ft³/s', 'ft³/day', 'gal/min', 'cm³/s', 'm³/s'],
           time: ['s', 'min', 'h', 'day'], pressure: ['lb/ft²', 'psi', 'kPa'], viscosity: ['Pa·s', 'g/(cm·s)', 'cP'],
-          permeability: ['cm²', 'm²', 'darcy'], ratio: ['%', 'decimal'], none: [''], temperature: ['°C'] }
+          permeability: ['cm²', 'm²', 'darcy'], transmissivity: ['ft²/day', 'ft²/min', 'm²/day'], ratio: ['%', 'decimal'], none: [''], temperature: ['°C'] }
   };
 
   function dimOf(unit) {

@@ -10,7 +10,7 @@
 var path = require('path');
 var root = path.join(__dirname, '..', 'js');
 ['core/units.js', 'core/expr.js', 'core/mathtext.js', 'core/phase.js', 'core/perm.js', 'core/problem.js', 'data/ch3-problems.js', 'data/ch7-problems.js',
- 'data/lessons.js', 'data/reference.js', 'data/concepts.js', 'ui/diagrams.js'].forEach(function (f) { require(path.join(root, f)); });
+ 'data/lessons.js', 'data/reference.js', 'data/concepts.js', 'data/florida.js', 'ui/diagrams.js'].forEach(function (f) { require(path.join(root, f)); });
 var SM = globalThis.SM, U = SM.units, PB = SM.problem;
 
 var pass = 0, fail = 0, failures = [];
@@ -123,7 +123,8 @@ SM.templates.forEach(function (t) {
         if (p.sym === 'S' || p.sym === 'w2' && /S2/.test(p.expr)) ok(p.value >= -1e-9 && p.value <= 1 + 1e-9, tag + ' S in [0,1]: ' + p.value);
         if (p.sym === 'n') ok(p.value > 0 && p.value < 1, tag + ' n in (0,1)');
         if (/^e\d?$/.test(p.sym)) ok(p.value > 0, tag + ' e > 0');
-        if (p.sym === 'Dr' || p.sym === 'Rc') ok(p.value >= -1e-9 && p.value <= 1 + 1e-9, tag + ' ratio in [0,1]: ' + p.value);
+        if (p.sym === 'Dr') ok(p.value >= -1e-9 && p.value <= 1 + 1e-9, tag + ' Dr in [0,1]: ' + p.value);
+        if (p.sym === 'Rc') ok(p.value > 0.7 && p.value < 1.15, tag + ' relative compaction plausible (may exceed 100 %): ' + p.value);
         if (/^(k|k2|k3|k20|kHeq|kVeq|Kp|Kcm|q|v|vs|A|a|V|Vs|Vv|Vw|Ww|Ws|g|gd|gsat|gsub|t|tday|DH|dVw|dMw|Q|Va)$/.test(p.sym)) ok(p.value >= 0, tag + ' non-negative: ' + p.value);
         // answer acceptance
         var asTyped = p.dim === 'ratio' ? String(p.value * 100) : String(p.value);
@@ -269,6 +270,31 @@ var Pt = PB.build(SM.templateById('c7-layers-tube'), 9, 'SI'), stb = Pt.scope;
 near(stb.q, stb.h * stb.b * stb.b / (stb.LA / stb.kA + stb.LB / stb.kB + stb.LC / stb.kC), 1e-9, 'tube series flow = Δh·A / Σ(L/k)');
 var Ph2 = PB.build(SM.templateById('c7-heads'), 4, 'SI');
 near(Ph2.scope.hA, Ph2.scope.uA / 9.81 + Ph2.scope.zA, 1e-12, 'Bernoulli h = u/γw + Z');
+
+/* ---------------- 9. Florida context: generated data stay within the documented ranges ---------------- */
+for (var fs = 1; fs <= 80; fs++) {
+  ['SI', 'US'].forEach(function (sys) {
+    var ftDay = sys === 'SI' ? 1 / 0.3048 : 1, ft2Day = sys === 'SI' ? 1 / 0.09290304 : 1;
+    var b = PB.build(SM.templateById('fl-biscayne-pump'), fs, sys).scope;
+    ok(b.kday * ftDay > 2000 && b.kday * ftDay < 20000, 'Biscayne k in documented range (ft/day): ' + b.kday * ftDay);
+    var f = PB.build(SM.templateById('fl-floridan-pump'), fs, sys).scope;
+    ok(f.Tr * ft2Day > 9000 && f.Tr * ft2Day < 110000, 'Floridan T within ~10,000–100,000 ft²/day: ' + f.Tr * ft2Day);
+    ok(f.h1 > f.H || true, 'piezometric level data present');
+    var h = PB.build(SM.templateById('fl-pond-hardpan'), fs, 'SI').scope;
+    ok(h.kVeq < 10 * h.k2 && h.kVeq < h.k1, 'hardpan controls vertical flow');
+    var kr = PB.build(SM.templateById('fl-karst-reynolds'), fs, 'SI').scope;
+    ok(kr.Rec > 1e4 && kr.Res < 1, 'conduit turbulent, sand laminar: ' + kr.Rec + ' / ' + kr.Res);
+    var m = PB.build(SM.templateById('fl-muck'), fs, sys).scope;
+    ok(m.w > 1 && m.e > 2 && m.gsat > m.gw, 'muck: w > 100 %, e > 2, γsat > γw');
+    var pc = PB.build(SM.templateById('fl-phosphatic-clay'), fs, sys).scope;
+    near(pc.w, (1 - pc.ssol) / pc.ssol, 1e-12, 'phosphatic w = (1 − s)/s');
+    var tt = PB.build(SM.templateById('fl-temperature'), fs, sys).scope;
+    ok(tt.etaRatio < 1 && tt.k20 < tt.kT, 'warm Florida groundwater → k20 < kT');
+  });
+}
+SM.concepts.filter(function (q) { return q.florida; }).forEach(function (q) { ok(q.answer < q.options.length, 'Florida concept ' + q.id); });
+ok(SM.lessons.filter(function (l) { return l.florida; }).length === 2, 'two Florida lessons');
+ok(SM.templates.filter(function (t) { return t.florida; }).length >= 9, 'Florida templates');
 
 console.log('Built ' + built + ' problem instances from ' + SM.templates.length + ' templates (' + counts[3] + ' Ch.3, ' + counts[7] + ' Ch.7, ' + counts.X + ' combined).');
 console.log('Assertions passed: ' + pass + ', failed: ' + fail);

@@ -28,7 +28,7 @@
     Md: 'M<sub>d</sub>', Ma: 'M<sub>a</sub>', gs: 'γ<sub>s</sub>', rhosat: 'ρ<sub>sat</sub>', kH: 'k<sub>H</sub>', kV: 'k<sub>V</sub>',
     hp: 'h<sub>p</sub>', hL: 'h<sub>L</sub>', Av: 'A<sub>v</sub>', Re: 'Re', hpw: 'u/γ<sub>w</sub>', Dhi: 'Δh<sub>i</sub>',
     Vborrow: 'V<sub>borrow</sub>', Vfill: 'V<sub>fill</sub>', Mmoist: 'M<sub>moist</sub>', Wd: 'W<sub>d</sub>', thalf: 't<sub>½</sub>', LA: 'L<sub>A</sub>', LB: 'L<sub>B</sub>', LC: 'L<sub>C</sub>', kA: 'k<sub>A</sub>', kB: 'k<sub>B</sub>', kC: 'k<sub>C</sub>',
-    Lmm: 'L', hmm: 'h', tmin: 't', kmm: 'k', h1mm: 'h<sub>1</sub>', qh: 'q'
+    Lmm: 'L', hmm: 'h', tmin: 't', Tr: 'T', kday: 'k<sub>day</sub>', hw: 'h<sub>w</sub>', Rec: 'Re<sub>conduit</sub>', Res: 'Re<sub>sand</sub>', vsand: 'v<sub>sand</sub>', Dc: 'D', D10m: 'D<sub>10</sub>', Apond: 'A', Qday: 'Q', gdT99: 'γ<sub>d(max)</sub>', vc: 'v<sub>c</sub>', kmin: 'k<sub>min</sub>', ssol: 's', kmm: 'k', h1mm: 'h<sub>1</sub>', qh: 'q'
   };
   function defineSymbol(name, html) { SYM[name] = html; }
   function symHTML(name) {

@@ -8,7 +8,7 @@
 var path = require('path');
 var root = path.join(__dirname, '..', 'js');
 ['core/units.js', 'core/expr.js', 'core/mathtext.js', 'core/phase.js', 'core/perm.js', 'core/problem.js', 'data/ch3-problems.js', 'data/ch7-problems.js',
- 'data/lessons.js', 'data/reference.js', 'data/concepts.js'].forEach(function (f) { require(path.join(root, f)); });
+ 'data/lessons.js', 'data/reference.js', 'data/concepts.js', 'data/florida.js'].forEach(function (f) { require(path.join(root, f)); });
 var SM = globalThis.SM;
 
 // units and words that look formula-like but are fine as text

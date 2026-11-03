@@ -112,7 +112,7 @@
       L.variables.map(function (v) { return '<tr><td>' + (/^[A-Za-z][A-Za-z0-9]*$/.test(v[0]) ? X.symHTML(v[0]) : mt(v[0])) + '</td><td>' + mt(v[1]) + '</td><td>' + mt(v[2]) + '</td></tr>'; }).join('') + '</tbody></table>';
     var rel = '<div class="eqlist">' + L.relations.map(function (r) { return '<div class="eqrow">' + X.eqHTML(r.lhs, r.expr) + '</div>'; }).join('') + '</div>' +
       (L.assumptions.length ? '<p><b>Assumptions &amp; applicability</b></p><ul>' + L.assumptions.map(function (a) { return '<li>' + mt(a) + '</li>'; }).join('') + '</ul>' : '');
-    n.innerHTML = '<header><span class="badge">' + ui.chLabel(L.chapter) + '</span><h2>' + mt(L.title) + '</h2><p class="muted small">Units in examples: <b>' + sys() + '</b> (change at top right). Lab permeability tests use cm and s in both systems.</p></header>' +
+    n.innerHTML = '<header><span class="badge">' + ui.chLabel(L.chapter) + '</span>' + (L.florida ? ' <span class="badge fl">Florida</span>' : '') + '<h2>' + mt(L.title) + '</h2><p class="muted small">Units in examples: <b>' + sys() + '</b> (change at top right). Lab permeability tests use cm and s in both systems.</p></header>' +
       sect(1, 'The physical idea', mt(L.concept)) +
       sect(2, 'Diagram', SM.diagrams.render(L.diagram) || '<p class="muted">This topic is mostly conceptual; see the example below.</p>') +
       sect(3, 'Variables and units', vars) +

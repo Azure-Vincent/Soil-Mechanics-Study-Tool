@@ -32,7 +32,7 @@ Progress is saved in the browser's local storage. Use **Progress → Export** to
 | **Learn** | 30 lessons: 13 for Ch. 3, 16 for Ch. 7 and 1 linking the chapters. Each one goes concept → labelled diagram → variables and units → relationship and assumptions → worked example with no skipped algebra → your attempt → common mistakes and another try. Expandable math help covers rearranging, scientific notation, logarithms, percentages and unit conversions. |
 | **Phase Lab** | A phase diagram with separate volume and weight columns. You enter the knowns, ask which unknowns can be found, then reveal each calculation one at a time. Invalid inputs (S > 100 %, Vw > Vv, Ws > W, contradictions) are kept separate from insufficient information, and missing properties are never assumed. **Explore** mode varies S, w or e and states what is held fixed; slider limits prevent contradictory states. |
 | **Permeability Lab** | Constant-head and falling-head diagrams that update live with every labelled quantity (L, A, a, h, h₁, h₂, t, Q), plus a layered-soil lab that contrasts parallel and perpendicular flow. Each has *predict-before-you-calculate* questions. |
-| **Practice** | 53 original problem templates (25 Ch. 3, 25 Ch. 7, 3 combined), each generating unlimited physically consistent variants in SI or US units. **Guided** mode has progressive “How do I start?” hints and per-step checks. **Independent** mode hides the solution until you submit. **Socratic** mode asks one question at a time and waits for each answer. |
+| **Practice** | 62 original problem templates (29 Ch. 3, 30 Ch. 7, 3 combined; 9 set in Florida conditions), each generating unlimited physically consistent variants in SI or US units. **Guided** mode has progressive “How do I start?” hints and per-step checks. **Independent** mode hides the solution until you submit. **Socratic** mode asks one question at a time and waits for each answer. |
 | **Mixed review** | Concept questions and numerical problems in which you must pick the method first. |
 | **Mock exam** | Choose chapters, difficulty, number of questions, timer and whether the formula sheet is allowed. Graded with partial credit. |
 | **Mistake review** | Missed concepts grouped by error type (percent vs decimal, e vs n, ln vs log₁₀, specimen vs standpipe area, and so on), with targeted follow-up problems. |
@@ -46,6 +46,27 @@ Every worked solution follows the same ten steps: **Given → Find → Sketch �
 - Rounding within 1.5 % is accepted. Within 5 % earns partial credit, with a note about intermediate rounding.
 - A wrong answer gets a diagnosis rather than just “incorrect”. The checker recognises percent/decimal slips, e vs n, w vs S, mass vs weight (factor g), the wrong unit weight, pressure-head vs total-head difference, q vs collected volume, swapped areas a and A, ln vs log₁₀ (factor 2.303), the wrong equivalent-k formula, unit-prefix errors (powers of 10) and diameter/radius errors.
 - Partial credit is given for correct intermediate steps.
+
+## Florida context
+
+Two lessons (in the **Florida soils and groundwater** section of Learn), 9 problem templates, 11 concept questions, 14 glossary terms and 3 formulas set the chapters in Florida conditions. These items carry a green **Florida** badge. Practice and Mixed review have a **Florida context** filter, and mock exams can be limited to Florida items.
+
+- **Chapter 3:**
+  - compaction checks on an A-3 sand embankment against the FDOT requirement of 100 % of the AASHTO T 99 maximum dry density;
+  - saturated organic soil (muck), with moisture content above 100 % and a low, measured $G_s$;
+  - replacing muck removed by subsoil excavation with compacted sand fill;
+  - phosphatic clay in settling areas, using solids content and $w = (1 - s)/s$.
+- **Chapter 7:**
+  - an unconfined pumping test in the Biscayne aquifer;
+  - a confined pumping test in the Upper Floridan aquifer, with transmissivity $T = kH$;
+  - a retention pond over a spodic hardpan, as layered vertical flow;
+  - temperature correction for warm Florida groundwater;
+  - the Reynolds number in karst conduits compared with sand, showing where Darcy's law applies.
+
+**Fact policy:**
+- Statements of fact about Florida use only items confirmed in two or more sources, or are attributed to their single source. Each Florida lesson lists its sources (USDA-NRCS, UF/IFAS, FDOT, FIPR, USGS, U.S. EPA).
+- Values that could not be verified are never stated as general Florida values. They appear only as data "measured for this sample" inside a problem. Examples are $G_s$ of a particular peat and $k$ of a particular hardpan.
+- The FDOT compaction requirement was confirmed only through secondary documents, so check it against the current FDOT Standard Specifications (Section 120).
 
 ## Notation and alignment with the textbook
 
@@ -67,7 +88,7 @@ Every worked solution follows the same ten steps: **Given → Find → Sketch �
 node tests/run-tests.js
 ```
 
-This runs about 214,000 assertions with no dependencies:
+This runs about 247,000 assertions with no dependencies:
 
 - Hand-calculated reference values, computed independently of the app's expression engine, for phase relations, Dr, constant- and falling-head tests, layered soils, pumping wells, temperature correction and the empirical correlations.
 - Unit conversions and number parsing.
