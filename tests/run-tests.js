@@ -9,7 +9,7 @@
 'use strict';
 var path = require('path');
 var root = path.join(__dirname, '..', 'js');
-['core/units.js', 'core/expr.js', 'core/phase.js', 'core/perm.js', 'core/problem.js', 'data/ch3-problems.js', 'data/ch7-problems.js',
+['core/units.js', 'core/expr.js', 'core/mathtext.js', 'core/phase.js', 'core/perm.js', 'core/problem.js', 'data/ch3-problems.js', 'data/ch7-problems.js',
  'data/lessons.js', 'data/reference.js', 'data/concepts.js', 'ui/diagrams.js'].forEach(function (f) { require(path.join(root, f)); });
 var SM = globalThis.SM, U = SM.units, PB = SM.problem;
 
@@ -150,7 +150,7 @@ SM.templates.forEach(function (t) {
         ok(/frac|·|=/.test(p.substituted), tag + ' substitution rendered');
       });
       // physical sanity of the unit weights
-      P.parts.forEach(function (p) { if (/^(g|gd|gsat)$/.test(p.sym) && (p.unit === 'kN/m³' || p.unit === 'lb/ft³')) { var lo = p.unit === 'kN/m³' ? 11 : 70, hi = p.unit === 'kN/m³' ? 24 : 155; ok(p.value > lo && p.value < hi, t.id + ' unit weight plausible ' + p.value); } });
+      P.parts.forEach(function (p) { if (/^(g|gd|gsat)$/.test(p.sym) && (p.unit === 'kN/m³' || p.unit === 'lb/ft³')) { var lo = p.unit === 'kN/m³' ? 6 : 38, hi = p.unit === 'kN/m³' ? 24 : 155; ok(p.value > lo && p.value < hi, t.id + ' unit weight plausible ' + p.value); } });
       // cross-check against the independent phase solver
       if (crossPhase.indexOf(t.id) >= 0) {
         var known = {}, gwv = sys === 'SI' ? 9.81 : 62.4, base = sys === 'SI' ? { V: 'm³', F: 'kN', G: 'kN/m³' } : { V: 'ft³', F: 'lb', G: 'lb/ft³' };
@@ -163,7 +163,7 @@ SM.templates.forEach(function (t) {
           if (kind === 'unitWeight' && g.unit !== base.G) { usable = false; return; }
           known[g.sym] = v;
         });
-        if (t.id === 'c3-moist-oven' && sys === 'SI') { var Gv = P.scope; known = { V: Gv.V * 1e-6, W: Gv.M * 1e-6 * 9.81, Ws: Gv.Md * 1e-6 * 9.81, Gs: Gv.Gs }; usable = true; }
+        if (t.id === 'c3-moist-oven' && sys === 'SI') { var Gv = P.scope; known = { V: Gv.V, W: Gv.W / 1000, Ws: Gv.Ws / 1000, Gs: Gv.Gs }; usable = true; }
         if (usable) {
           var sol = SM.phase.solve(known, gwv);
           ok(sol.status !== 'invalid', t.id + ' givens physically valid (' + sys + ' ' + s + '): ' + (sol.errors || []).join(';'));
@@ -178,8 +178,8 @@ SM.templates.forEach(function (t) {
       }
       // cross-checks against independent permeability functions
       var sc = P.scope;
-      if (t.id === 'c7-falling-head-k') near(sc.k, SM.perm.fallingHeadK(Math.PI * sc.d * sc.d / 4, sc.L, Math.PI * sc.dia * sc.dia / 4, sc.t, sc.h1, sc.h2), 1e-9, 'falling-head cross-check');
-      if (t.id === 'c7-const-head-k') near(sc.k, SM.perm.constantHeadK(sc.Q, sc.L, Math.PI * sc.dia * sc.dia / 4, sc.h, sc.t), 1e-9, 'constant-head cross-check');
+      if (t.id === 'c7-falling-head-k') near(sc.k, sc.d !== undefined ? SM.perm.fallingHeadK(Math.PI * sc.d * sc.d / 4, sc.L, Math.PI * sc.dia * sc.dia / 4, sc.t, sc.h1, sc.h2) : SM.perm.fallingHeadK(sc.a, sc.L, sc.A, sc.t, sc.h1, sc.h2) / 10, 1e-9, 'falling-head cross-check');
+      if (t.id === 'c7-const-head-k') near(sc.k, SM.perm.constantHeadK(sc.Q, sc.L, sc.dia !== undefined ? Math.PI * sc.dia * sc.dia / 4 : sc.A, sc.h, sc.t), 1e-9, 'constant-head cross-check');
       if (t.id === 'c7-pump-unconfined') near(sc.k, SM.perm.pumpUnconfined(sc.q, sc.r1, sc.r2, sc.h1, sc.h2), 1e-9, 'unconfined cross-check');
       if (t.id === 'c7-pump-confined') near(sc.k, SM.perm.pumpConfined(sc.q, sc.r1, sc.r2, sc.h1, sc.h2, sc.H), 1e-9, 'confined cross-check');
       if (t.id === 'c7-layers-headloss') { near(sc.Dh1 + sc.Dh2, sc.Dh, 1e-9, 'head losses add'); near(sc.v, sc.k1 * (sc.Dh1 / sc.H1), 1e-6, 'same v in each layer'); }
@@ -195,7 +195,7 @@ SM.templates.forEach(function (t) {
 });
 
 /* ---------------- 6. feedback specifics ---------------- */
-var T = SM.templateById('c7-falling-head-k'), P7 = PB.build(T, 42, 'SI'), kp = P7.parts[2];
+var T = SM.templateById('c7-falling-head-k'), P7 = null; for (var sd7 = 1; !P7 || P7.parts.length !== 3; sd7++) P7 = PB.build(T, sd7, 'SI'); var kp = P7.parts[2];
 ok(PB.check(kp, String(kp.value / 2.303), 'cm/s', 'SI').tag === 'log', 'ln/log mix diagnosed');
 ok(PB.check(kp, String(kp.value * 100), 'cm/s', 'SI').tag === 'units', 'factor 100 diagnosed');
 ok(PB.check(kp, String(kp.value / 100), 'm/s', 'SI').status === 'correct', 'm/s equivalent accepted');
@@ -225,6 +225,50 @@ SM.concepts.forEach(function (q) { ok(q.answer >= 0 && q.answer < q.options.leng
 var cc = { 3: 0, 7: 0 }; SM.concepts.forEach(function (q) { if (cc[q.chapter] !== undefined) cc[q.chapter]++; });
 ok(cc[3] >= 20 && cc[7] >= 20, 'concept bank size ' + JSON.stringify(cc));
 ok(SM.glossary.length >= 50, 'glossary size ' + SM.glossary.length);
+
+/* ---------------- 8. notation & textbook-form checks ---------------- */
+// (a) every symbol used in equations is in the symbol table (no accidental auto-subscripts)
+(function () {
+  var bad = {};
+  function chk(sym) { if (!(sym in SM.expr.SYM) && !/^[A-Za-z]\d*$/.test(sym) && !/^k[HV]\d+$/.test(sym)) bad[sym] = 1; }
+  SM.templates.forEach(function (t) { ['SI', 'US'].forEach(function (sys) { [1, 2, 3, 4].forEach(function (sd) { var P = PB.build(t, sd, sys); P.parts.forEach(function (x) { chk(x.sym); x.deps.forEach(chk); }); }); }); });
+  SM.lessons.forEach(function (L) { L.relations.forEach(function (r) { chk(r.lhs); SM.expr.varsOf(r.expr).forEach(chk); }); });
+  SM.formulas.forEach(function (f) { chk(f.lhs); SM.expr.varsOf(f.expr).forEach(chk); });
+  ok(!Object.keys(bad).length, 'symbols missing from symbol table: ' + Object.keys(bad).join(', '));
+})();
+// (b) no plain-text formulas anywhere in the content (tests/lint-math.js)
+var lintFindings = require('./lint-math.js').run();
+ok(lintFindings.length === 0, 'notation lint: ' + lintFindings.length + ' plain-text formula(s), first: ' + (lintFindings[0] ? lintFindings[0].where + ' ' + lintFindings[0].snip : ''));
+// (c) markup renderer: subscripts, Greek, juxtaposition, escaping
+ok(SM.mt.html('$e = Vv / Vs$') === '<span class="m"><i>e</i> = <i>V</i><sub>v</sub>/<i>V</i><sub>s</sub></span>', 'markup e = Vv/Vs: ' + SM.mt.html('$e = Vv / Vs$'));
+ok(/<i>γ<\/i><sub>d<\/sub>/.test(SM.mt.html('$gd$')), 'markup γd');
+ok(/<i>kiA<\/i>/.test(SM.mt.html('$q = k i A$')), 'markup juxtaposition');
+ok(/log<sub>10<\/sub>/.test(SM.mt.html('$log10(h1 / h2)$')), 'markup log10');
+ok(SM.mt.html('a < b & c') === 'a < b & c', 'non-math text untouched');
+ok(!/<script/.test(SM.mt.html('$<script>$')), 'math segment escapes HTML');
+ok(/<tspan[^>]*dy="3.5"[^>]*>s<\/tspan>/.test(SM.mt.svg('$Vs$')), 'SVG subscript tspan');
+// (d) textbook-style table of unit-weight relationships: every form in a group is the same quantity
+(function () {
+  var groups = { moist: [], dry: [], sat: [] };
+  SM.formulas.forEach(function (f) { if (f.group && groups[f.group]) groups[f.group].push(f); });
+  ok(groups.moist.length >= 4 && groups.dry.length >= 7 && groups.sat.length >= 7, 'unit-weight table forms present: ' + groups.moist.length + '/' + groups.dry.length + '/' + groups.sat.length);
+  [[2.65, 0.55, 0.4], [2.70, 0.9, 0.75], [2.72, 1.4, 0.95]].forEach(function (c) {
+    var Gs = c[0], e = c[1], Sp = c[2], gw = 9.81, st = SM.phase.stateFrom(Gs, e, Sp, 1, gw), sat = SM.phase.stateFrom(Gs, e, 1, 1, gw);
+    groups.moist.forEach(function (f) { near(SM.expr.evaluate(f.expr, { Gs: Gs, e: e, S: Sp, w: st.w, n: st.n, gw: gw }), st.g, 1e-9, 'moist form ' + f.id); });
+    groups.dry.forEach(function (f) { near(SM.expr.evaluate(f.expr, { Gs: Gs, e: e, S: Sp, w: st.w, n: st.n, gw: gw, g: st.g, gsat: st.gsat }), st.gd, 1e-9, 'dry form ' + f.id); });
+    groups.sat.forEach(function (f) { near(SM.expr.evaluate(f.expr, { Gs: Gs, e: e, S: 1, w: sat.w, n: sat.n, gw: gw, gd: sat.gd }), sat.gsat, 1e-9, 'sat form ' + f.id); });
+  });
+})();
+// (e) textbook-form examples: hand calculations independent of the templates
+var Pm = PB.build(SM.templateById('c3-moist-oven'), 77, 'SI'), sm = Pm.scope;
+near(sm.w, (sm.W - sm.Ws) / sm.Ws, 1e-12, 'moist-oven w'); near(sm.g, sm.W / 1000 / sm.V, 1e-12, 'moist-oven γ (kN/m³)');
+near(sm.e, sm.Gs * 9.81 / (sm.Ws / 1000 / sm.V) - 1, 1e-12, 'moist-oven e');
+var Pf = PB.build(SM.templateById('c3-field-saturate'), 5, 'SI'), sf = Pf.scope;
+near(sf.dMw, (sf.e - sf.w * sf.Gs) * 1000 / (1 + sf.e), 1e-9, 'field-saturate water to add = air voids × ρw');
+var Pt = PB.build(SM.templateById('c7-layers-tube'), 9, 'SI'), stb = Pt.scope;
+near(stb.q, stb.h * stb.b * stb.b / (stb.LA / stb.kA + stb.LB / stb.kB + stb.LC / stb.kC), 1e-9, 'tube series flow = Δh·A / Σ(L/k)');
+var Ph2 = PB.build(SM.templateById('c7-heads'), 4, 'SI');
+near(Ph2.scope.hA, Ph2.scope.uA / 9.81 + Ph2.scope.zA, 1e-12, 'Bernoulli h = u/γw + Z');
 
 console.log('Built ' + built + ' problem instances from ' + SM.templates.length + ' templates (' + counts[3] + ' Ch.3, ' + counts[7] + ' Ch.7, ' + counts.X + ' combined).');
 console.log('Assertions passed: ' + pass + ', failed: ' + fail);

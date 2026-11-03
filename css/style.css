@@ -121,7 +121,7 @@ details.mathhelp summary { cursor: pointer; font-weight: 600; color: var(--accen
 .dsolid { fill: var(--solid); stroke: var(--ink); stroke-width: 1; } .dsolidtop { fill: var(--solid); stroke: var(--ink); filter: brightness(1.15); }
 .dwater { fill: var(--water); stroke: var(--ink); stroke-width: .6; } .dair { fill: var(--air); stroke: var(--ink); stroke-width: 1; }
 .hl { stroke: var(--focus) !important; stroke-width: 3 !important; }
-.dsoil { fill: var(--soil); } .dsoilpat { fill: url(#soilpat); } .dsp { fill: rgba(0,0,0,.18); }
+.dsoil { fill: var(--soil); } .dsoilpat { stroke: none; } .dsp { fill: rgba(0,0,0,.18); }
 .dpipe { fill: none; stroke: var(--pipe); stroke-width: 2; } .dpipe2 { stroke: var(--pipe); stroke-width: 3; fill: none; }
 .dl { stroke: var(--ink); stroke-width: 1.2; } .dl.thick { stroke-width: 3; } .dl.dash { stroke-dasharray: 5 4; stroke-width: 1; fill: none; }
 .dbr { stroke: var(--muted); stroke-width: 1.5; }
@@ -259,3 +259,21 @@ details.mathhelp summary { cursor: pointer; font-weight: 600; color: var(--accen
   .mainnav a { padding: 6px 7px; font-size: .9rem; }
 }
 @media print { .top, .pp-tools, .foot, .lesson-nav { display: none; } }
+
+/* inline math markup ($…$) */
+.m { white-space: normal; font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif; font-size: 1.07em; }
+.m i { font-style: italic; }
+.m sub, .m sup, var sub, var sup { font-size: .72em; }
+.m sub i, .m sup i { font-style: italic; }
+.rel-table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+.rel-table th, .rel-table td { border: 1px solid var(--line); padding: 4px 8px; vertical-align: top; text-align: left; }
+.lesson, .lsec, .fcard, .gloss dd { overflow-wrap: anywhere; }
+
+/* textbook-style phase diagram fills */
+.dwaterp, .dsolidp { stroke: var(--ink); stroke-width: .6; }
+.dsolid0 { fill: #b3b3a6; } .dsd { fill: #4d5a6a; } .dsd2 { fill: #5aa3d6; } .dwl { stroke: #1f5f8b; stroke-width: 1.2; }
+.dframe { fill: none; stroke: var(--ink); stroke-width: 1.4; } .dframe1 { stroke: var(--ink); stroke-width: 1; }
+.dg[aria-label^="Phase diagram"] { max-width: 600px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dsolid0 { fill: #6f6f66; } :root:not([data-theme="light"]) .dsd { fill: #c9d1db; } :root:not([data-theme="light"]) .dwl { stroke: #cfe6f7; } }
+.dwaterbg { fill: #e3f1fb; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dwaterbg { fill: #24445c; } }

@@ -56,11 +56,11 @@
       var sub = {}; deps.forEach(function (d) { sub[d] = subVal(scope[d], units[d], isGiven[d] ? 6 : 4); });
       var mistakes = (p.mistakes || []).map(function (m) {
         var mv = m.value !== undefined ? m.value : X.evaluate(m.expr, scope);
-        return { value: mv, msg: m.msg, tag: m.tag || 'concept' };
+        return { value: mv, msg: SM.mt.html(m.msg), tag: m.tag || 'concept' };
       }).filter(function (m) { return isFinite(m.value) && Math.abs(m.value - value) > 0.03 * Math.abs(value); });
       var part = {
-        index: idx, sym: p.sym, label: p.label, expr: p.expr, unit: p.unit || '', dim: dimFor(p.unit, p.dim),
-        value: value, tol: p.tol || 0.015, why: p.why || '', hint: p.hint || '', deps: deps, tag: p.tag || tpl.topic,
+        index: idx, sym: p.sym, label: SM.mt.html(p.label), labelText: SM.mt.plain(p.label), expr: p.expr, unit: p.unit || '', dim: dimFor(p.unit, p.dim),
+        value: value, tol: p.tol || 0.015, why: SM.mt.html(p.why || ''), hint: SM.mt.html(p.hint || ''), deps: deps, tag: p.tag || tpl.topic,
         symbolic: X.eqHTML(p.sym, p.expr), substituted: X.eqHTML(p.sym, p.expr, sub),
         result: X.symHTML(p.sym) + ' = ' + showVal(value, p.unit, p.sig || 4),
         mistakes: mistakes, alts: p.alts || null, note: p.note || '', sig: p.sig || 4, check: p.check || ''
@@ -74,14 +74,14 @@
     });
     return {
       id: tpl.id + ':' + seed + ':' + sys, templateId: tpl.id, seed: seed, sys: sys, chapter: tpl.chapter, topic: tpl.topic,
-      title: tpl.title, method: tpl.method || '', difficulty: tpl.difficulty || 1,
-      text: spec.text, given: (spec.given || []).filter(function (g) { return !g.hidden; }).map(function (g) {
-        return { sym: g.sym, label: g.label, value: g.value, unit: g.unit || '', html: X.symHTML(g.sym) + ' = ' + showVal(g.value, g.unit, g.sig || 3, g.sig !== undefined) };
+      title: tpl.title, method: SM.mt.html(tpl.method || ''), difficulty: tpl.difficulty || 1,
+      text: SM.mt.html(spec.text), given: (spec.given || []).filter(function (g) { return !g.hidden; }).map(function (g) {
+        return { sym: g.sym, label: SM.mt.html(g.label), value: g.value, unit: g.unit || '', html: X.symHTML(g.sym) + ' = ' + showVal(g.value, g.unit, g.sig || 3, g.sig !== undefined) };
       }),
-      constants: (spec.constants || []).map(function (c) { return { html: X.symHTML(c.sym) + ' = ' + showVal(c.value, c.unit, 4) + (c.label ? ' (' + c.label + ')' : '') }; }),
+      constants: (spec.constants || []).map(function (c) { return { html: X.symHTML(c.sym) + ' = ' + showVal(c.value, c.unit, 4) + (c.label ? ' (' + SM.mt.html(c.label) + ')' : '') }; }),
       find: spec.find || parts.map(function (p) { return p.label + ' (' + X.symText(p.sym) + ')'; }),
-      sketch: spec.sketch || null, assumptions: spec.assumptions || [], choose: spec.choose || '',
-      parts: parts, check: spec.check || [], interpret: spec.interpret || '', scope: scope, units: units
+      sketch: spec.sketch || null, assumptions: (spec.assumptions || []).map(SM.mt.html), choose: SM.mt.html(spec.choose || ''),
+      parts: parts, check: (spec.check || []).map(SM.mt.html), interpret: SM.mt.html(spec.interpret || ''), scope: scope, units: units
     };
   }
 
@@ -135,16 +135,21 @@
    * @returns {status:'correct'|'close'|'incorrect'|'invalid', credit, msg, tag}
    */
   function check(part, input, unit, sys) {
+    var res = checkRaw(part, input, unit, sys);
+    res.msg = SM.mt.html(res.msg);
+    return res;
+  }
+  function checkRaw(part, input, unit, sys) {
     var x = U.parseNumber(input);
     if (input === undefined || String(input).trim() === '') return { status: 'invalid', credit: 0, msg: 'Enter a number first.' };
-    if (isNaN(x)) return { status: 'invalid', credit: 0, msg: 'I could not read “' + input + '” as a number. Examples that work: 0.65, 18.5, 3.2e-4, 3.2×10^-4.' };
+    if (isNaN(x)) return { status: 'invalid', credit: 0, msg: 'I could not read “' + String(input).replace(/[&<>$]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '$': '&#36;' }[c]; }) + '” as a number. Examples that work: 0.65, 18.5, 3.2e-4, 3.2×10^-4.' };
     var target = part.value;
     var u = unit === undefined ? part.unit : unit;
     var val;
     try { val = convertToPart(x, u, part); } catch (e) { return { status: 'invalid', credit: 0, msg: 'That unit does not match the quantity (expected ' + (part.unit || 'a dimensionless number') + ').' }; }
     var tol = part.tol;
     if (near(val, target, tol)) {
-      var msg = 'Correct: ' + part.result.replace(/<[^>]+>/g, '') + '.';
+      var msg = 'Correct: ' + part.result + '.';
       if (u !== part.unit && part.dim !== 'ratio') msg += ' (Your units, ' + (u || 'none') + ', are equivalent.)';
       return { status: 'correct', credit: 1, msg: msg };
     }
@@ -159,18 +164,18 @@
     }
     var ratio = val / target;
     if (target !== 0 && isFinite(ratio)) {
-      if (near(ratio, -1, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'sign', msg: 'The magnitude is right but the sign is wrong. Check which point has the higher total head (flow goes from higher to lower total head) or the order of subtraction.' };
-      if (near(ratio, 2.303, 0.02) || near(ratio, 1 / 2.303, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'log', msg: 'Your answer is off by a factor of 2.303 — natural log and base-10 log were mixed. Use ln(h₁/h₂) without the 2.303, OR 2.303·log₁₀(h₁/h₂). (ln x = 2.303·log₁₀ x.)' };
+      if (near(ratio, -1, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'sign', msg: 'The magnitude is right but the sign is wrong. Check which point has the higher total head $h$ (flow goes from higher to lower total head) or the order of subtraction.' };
+      if (near(ratio, 2.303, 0.02) || near(ratio, 1 / 2.303, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'log', msg: 'Your answer is off by a factor of 2.303: natural and base-10 logarithms were mixed. Use $ln(h1 / h2)$ without the 2.303, OR $2.303 log10(h1 / h2)$, since $ln x = 2.303 log10 x$.' };
       var gfac = sys === 'US' ? 32.174 : 9.81;
-      if (near(ratio, gfac, 0.02) || near(ratio, 1 / gfac, 0.02) || near(ratio, 9.81, 0.02) || near(ratio, 1 / 9.81, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'mass-weight', msg: 'Off by a factor of g (9.81 m/s²): mass and weight (or density and unit weight) were mixed. Weight W = m·g; unit weight γ = ρ·g. For example, 1 Mg/m³ × 9.81 m/s² = 9.81 kN/m³.' };
+      if (near(ratio, gfac, 0.02) || near(ratio, 1 / gfac, 0.02) || near(ratio, 9.81, 0.02) || near(ratio, 1 / 9.81, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'mass-weight', msg: 'Off by a factor of $grav$ (9.81 m/s²): mass and weight (or density and unit weight) were mixed. Weight $W = M grav$; unit weight $g = rho grav$. For example, 1 Mg/m³ × 9.81 m/s² = 9.81 kN/m³.' };
       var lg = Math.log10(Math.abs(ratio)), k = Math.round(lg);
-      if (k !== 0 && Math.abs(lg - k) < 0.01) return { status: 'incorrect', credit: 0.25, tag: 'units', msg: 'Your answer is off by exactly a factor of 10' + U.sup(k) + ' — a unit-conversion slip (' + unitSlipName(k) + '). Re-check the units of every value you substituted; they must be consistent (e.g. all cm and s for k in cm/s).' };
-      if (near(ratio, 4, 0.02) || near(ratio, 0.25, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'area', msg: 'Off by a factor of 4: check the area. A = πD²/4 uses the diameter; πr² uses the radius. Using D in πr² gives 4× the area.' };
+      if (k !== 0 && Math.abs(lg - k) < 0.01) return { status: 'incorrect', credit: 0.25, tag: 'units', msg: 'Your answer is off by exactly a factor of $10^{' + k + '}$: a unit-conversion slip (' + unitSlipName(k) + '). Re-check the units of every value you substituted; they must be consistent (e.g. all cm and s for $k$ in cm/s).' };
+      if (near(ratio, 4, 0.02) || near(ratio, 0.25, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'area', msg: 'Off by a factor of 4: check the area. $A = pi D^2 / 4$ uses the diameter $D$; $pi r^2$ uses the radius $r$. Putting $D$ into $pi r^2$ gives 4 times the area.' };
       if (near(ratio, 2, 0.02) || near(ratio, 0.5, 0.02)) return { status: 'incorrect', credit: 0.25, tag: 'factor2', msg: 'Off by a factor of 2. Check whether you used a diameter where a radius was needed (or vice versa), or used only part of a head difference/thickness.' };
     }
     if (near(val, target, 0.05)) return { status: 'close', credit: 0.5, tag: 'rounding', msg: 'Close (within 5 %) but outside the rounding tolerance. Keep at least 3–4 significant figures in intermediate results and don’t round γw or Gs early.' };
     var dir = val > target ? 'too large' : 'too small';
-    return { status: 'incorrect', credit: 0, tag: part.tag, msg: 'Not correct — your value is ' + dir + '. Check this step: ' + (part.why ? part.why.replace(/<[^>]+>/g, '') + ' ' : '') + 'Use “How do I start?” for the relationship, then compare your substitution term by term.' };
+    return { status: 'incorrect', credit: 0, tag: part.tag, msg: 'Not correct — your value is ' + dir + '. Check this step: ' + (part.why ? part.why + ' ' : '') + 'Use “How do I start?” for the relationship, then compare your substitution term by term.' };
   }
   function convertToPart(x, u, part) {
     if (part.dim === 'ratio') return x * U.factor(u || 'decimal', 'ratio');

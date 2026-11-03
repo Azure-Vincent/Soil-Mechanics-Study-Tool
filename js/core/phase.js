@@ -15,7 +15,7 @@
     W:   { label: 'Total weight', kind: 'force' },
     Ws:  { label: 'Weight of solids', kind: 'force' },
     Ww:  { label: 'Weight of water', kind: 'force' },
-    w:   { label: 'Water (moisture) content', kind: 'ratio' },
+    w:   { label: 'Moisture content', kind: 'ratio' },
     e:   { label: 'Void ratio', kind: 'none' },
     n:   { label: 'Porosity', kind: 'ratio' },
     S:   { label: 'Degree of saturation', kind: 'ratio' },
@@ -28,26 +28,26 @@
 
   // Each relation: name + forms {target: expression}. gw is always known.
   var RELATIONS = [
-    { id: 'Vsum',  name: 'Volumes add: V = Vs + Vv', forms: { V: 'Vs + Vv', Vs: 'V - Vv', Vv: 'V - Vs' } },
-    { id: 'Vvsum', name: 'Voids hold water and air: Vv = Vw + Va', forms: { Vv: 'Vw + Va', Vw: 'Vv - Va', Va: 'Vv - Vw' } },
-    { id: 'Wsum',  name: 'Weights add (air weight ≈ 0): W = Ws + Ww', forms: { W: 'Ws + Ww', Ws: 'W - Ww', Ww: 'W - Ws' } },
-    { id: 'wdef',  name: 'Definition of water content', forms: { w: 'Ww / Ws', Ww: 'w * Ws', Ws: 'Ww / w' } },
+    { id: 'Vsum',  name: 'Volumes add: $V = Vs + Vv$', forms: { V: 'Vs + Vv', Vs: 'V - Vv', Vv: 'V - Vs' } },
+    { id: 'Vvsum', name: 'Voids hold water and air: $Vv = Vw + Va$', forms: { Vv: 'Vw + Va', Vw: 'Vv - Va', Va: 'Vv - Vw' } },
+    { id: 'Wsum',  name: 'Weights add (air weight ≈ 0): $W = Ws + Ww$', forms: { W: 'Ws + Ww', Ws: 'W - Ww', Ww: 'W - Ws' } },
+    { id: 'wdef',  name: 'Definition of moisture content', forms: { w: 'Ww / Ws', Ww: 'w * Ws', Ws: 'Ww / w' } },
     { id: 'edef',  name: 'Definition of void ratio', forms: { e: 'Vv / Vs', Vv: 'e * Vs', Vs: 'Vv / e' } },
     { id: 'ndef',  name: 'Definition of porosity', forms: { n: 'Vv / V', Vv: 'n * V', V: 'Vv / n' } },
     { id: 'Sdef',  name: 'Definition of degree of saturation', forms: { S: 'Vw / Vv', Vw: 'S * Vv', Vv: 'Vw / S' } },
     { id: 'Gsdef', name: 'Definition of specific gravity of solids', forms: { Ws: 'Gs * Vs * gw', Vs: 'Ws / (Gs * gw)', Gs: 'Ws / (Vs * gw)' } },
-    { id: 'Wwdef', name: 'Weight of water = γw × volume of water', forms: { Ww: 'Vw * gw', Vw: 'Ww / gw' } },
+    { id: 'Wwdef', name: 'Weight of water: $Ww = gw Vw$', forms: { Ww: 'Vw * gw', Vw: 'Ww / gw' } },
     { id: 'gdef',  name: 'Definition of moist unit weight', forms: { g: 'W / V', W: 'g * V', V: 'W / g' } },
     { id: 'gddef', name: 'Definition of dry unit weight', forms: { gd: 'Ws / V', Ws: 'gd * V', V: 'Ws / gd' } },
     { id: 'ne',    name: 'Porosity–void ratio relation', forms: { n: 'e / (1 + e)', e: 'n / (1 - n)' } },
-    { id: 'Se',    name: 'Se = wGs', forms: { S: 'w * Gs / e', e: 'w * Gs / S', w: 'S * e / Gs', Gs: 'S * e / w' } },
-    { id: 'gdGe',  name: 'Dry unit weight from Gs and e', forms: { gd: 'Gs * gw / (1 + e)', e: 'Gs * gw / gd - 1', Gs: 'gd * (1 + e) / gw' } },
-    { id: 'ggdw',  name: 'Moist and dry unit weight: γ = γd(1 + w)', forms: { g: 'gd * (1 + w)', gd: 'g / (1 + w)', w: 'g / gd - 1' } },
-    { id: 'gsatd', name: 'Saturated unit weight from Gs and e', forms: { gsat: '(Gs + e) * gw / (1 + e)', e: '(Gs * gw - gsat) / (gsat - gw)', Gs: '(gsat * (1 + e) - e * gw) / gw' } },
-    { id: 'gsubd', name: 'Submerged unit weight: γ′ = γsat − γw', forms: { gsub: 'gsat - gw', gsat: 'gsub + gw' } },
-    { id: 'gGSe',  name: 'Moist unit weight from Gs, S and e', forms: { g: '(Gs + S * e) * gw / (1 + e)', e: '(Gs * gw - g) / (g - S * gw)', S: '(g * (1 + e) - Gs * gw) / (e * gw)', Gs: '(g * (1 + e) - S * e * gw) / gw' } },
-    { id: 'gdwS',  name: 'Dry unit weight from w and S (eliminating Gs)', forms: { e: 'w * gd / (S * gw - w * gd)' } },
-    { id: 'gwGsS', name: 'Moist unit weight from w, Gs and S (eliminating e)', forms: { Gs: 'g / ((1 + w) * gw - g * w / S)' } }
+    { id: 'Se',    name: '$S e = w Gs$', forms: { S: 'w * Gs / e', e: 'w * Gs / S', w: 'S * e / Gs', Gs: 'S * e / w' } },
+    { id: 'gdGe',  name: 'Dry unit weight from $Gs$ and $e$', forms: { gd: 'Gs * gw / (1 + e)', e: 'Gs * gw / gd - 1', Gs: 'gd * (1 + e) / gw' } },
+    { id: 'ggdw',  name: 'Moist and dry unit weight: $g = gd (1 + w)$', forms: { g: 'gd * (1 + w)', gd: 'g / (1 + w)', w: 'g / gd - 1' } },
+    { id: 'gsatd', name: 'Saturated unit weight from $Gs$ and $e$', forms: { gsat: '(Gs + e) * gw / (1 + e)', e: '(Gs * gw - gsat) / (gsat - gw)', Gs: '(gsat * (1 + e) - e * gw) / gw' } },
+    { id: 'gsubd', name: 'Submerged unit weight: $gsub = gsat - gw$', forms: { gsub: 'gsat - gw', gsat: 'gsub + gw' } },
+    { id: 'gGSe',  name: 'Moist unit weight from $Gs$, $S$ and $e$', forms: { g: '(Gs + S * e) * gw / (1 + e)', e: '(Gs * gw - g) / (g - S * gw)', S: '(g * (1 + e) - Gs * gw) / (e * gw)', Gs: '(g * (1 + e) - S * e * gw) / gw' } },
+    { id: 'gdwS',  name: 'Dry unit weight from $w$ and $S$ (eliminating $Gs$)', forms: { e: 'w * gd / (S * gw - w * gd)' } },
+    { id: 'gwGsS', name: 'Moist unit weight from $w$, $Gs$ and $S$ (eliminating $e$)', forms: { Gs: 'g / ((1 + w) * gw - g * w / S)' } }
   ];
 
   var ORDER = ['V', 'Vs', 'Vv', 'Vw', 'Va', 'W', 'Ws', 'Ww', 'w', 'e', 'n', 'S', 'Gs', 'g', 'gd', 'gsat', 'gsub'];
@@ -65,12 +65,12 @@
     if (name === 'S') { if (x < 0) return 'Degree of saturation cannot be negative.'; if (x > 1) return 'Degree of saturation cannot exceed 100 %.'; return null; }
     if (name === 'n') { if (x < 0) return 'Porosity cannot be negative.'; if (x >= 1) return 'Porosity must be less than 100 % (solids must occupy some volume).'; return null; }
     if (name === 'e' || name === 'w') { if (x < 0) return VARS[name].label + ' cannot be negative.'; return null; } // >1 allowed
-    if (name === 'Gs') { if (x <= 1) return 'Gs must be greater than 1 for mineral solids (typical 2.6–2.9).'; return null; }
+    if (name === 'Gs') { if (x <= 1) return '$Gs$ must be greater than 1 for mineral solids (typical 2.6–2.9).'; return null; }
     if (k === 'unitWeight') { if (x <= 0) return VARS[name].label + ' must be positive.'; return null; }
     return null;
   }
   function domainWarning(name, x, gw) {
-    if (name === 'Gs' && (x < 2.0 || x > 3.2)) return 'Gs = ' + SM.units.fmt(x) + ' is outside the usual 2.0–3.2 range for soils — check the value.';
+    if (name === 'Gs' && (x < 2.0 || x > 3.2)) return '$Gs$ = ' + SM.units.fmt(x) + ' is outside the usual 2.0–3.2 range for soils; check the value.';
     if (name === 'e' && x > 5) return 'A void ratio above 5 is unusual (very soft clay or peat) — check the input.';
     if (name === 'w' && x > 3) return 'Water content above 300 % occurs only in very soft organic soils/peat — check the input.';
     if ((name === 'g' || name === 'gd' || name === 'gsat') && gw && (x < 0.6 * gw || x > 2.6 * gw)) return VARS[name].label + ' looks unusual (typical soils are about ' + SM.units.fmt(1.3 * gw, 3) + '–' + SM.units.fmt(2.4 * gw, 3) + ').';
@@ -156,7 +156,7 @@
     var message = '';
     if (status === 'insufficient') {
       var intensiveOnly = ['w', 'e', 'n', 'S', 'Gs', 'g', 'gd', 'gsat', 'gsub'].every(function (k) { return k in vals; });
-      if (intensiveOnly) message = 'All ratios and unit weights are known, but the sample size is not. Volumes and weights need one extensive quantity (for example V, Vs or Ws). Many problems avoid this by assuming Vs = 1 or V = 1.';
+      if (intensiveOnly) message = 'All ratios and unit weights are known, but the sample size is not. Volumes and weights need one extensive quantity (for example $V$, $Vs$ or $Ws$). Many problems avoid this by assuming $Vs$ = 1 or $V$ = 1.';
       else message = 'Not enough independent information to find: ' + unknown.map(function (k) { return VARS[k].label.toLowerCase(); }).join(', ') + '. No values are assumed — add another known quantity.';
     }
     return { status: status, values: vals, given: given, steps: steps, errors: [], warnings: warnings, unknown: unknown, message: message };

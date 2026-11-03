@@ -15,15 +15,20 @@
     emax: 'e<sub>max</sub>', emin: 'e<sub>min</sub>', Dr: 'D<sub>r</sub>', Rc: 'R', Gs: 'G<sub>s</sub>',
     Dh: 'Δh', DH: 'ΔH', DV: 'ΔV', DW: 'ΔW', dMw: 'ΔM<sub>w</sub>', dVw: 'ΔV<sub>w</sub>', dWw: 'ΔW<sub>w</sub>',
     kHeq: 'k<sub>H(eq)</sub>', kVeq: 'k<sub>V(eq)</sub>', k20: 'k<sub>20</sub>', kT: 'k<sub>T</sub>',
-    Kp: 'K', vs: 'v<sub>s</sub>', pi: 'π', Mw: 'M<sub>w</sub>', Ms: 'M<sub>s</sub>', M: 'M',
+    Kp: 'K̄', Kbar: 'K̄', vs: 'v<sub>s</sub>', pi: 'π', Mw: 'M<sub>w</sub>', Ms: 'M<sub>s</sub>', M: 'M',
     M1: 'M<sub>1</sub>', M2: 'M<sub>2</sub>', M3: 'M<sub>3</sub>', Mwet: 'M<sub>wet</sub>', Mdry: 'M<sub>dry</sub>',
     uA: 'u<sub>A</sub>', uB: 'u<sub>B</sub>', zA: 'Z<sub>A</sub>', zB: 'Z<sub>B</sub>', hA: 'h<sub>A</sub>', hB: 'h<sub>B</sub>',
     hpA: 'h<sub>p,A</sub>', hpB: 'h<sub>p,B</sub>', Vt: 'V', Qv: 'Q', Re: 'Re', C: 'C', Ck: 'C<sub>k</sub>',
     Pa: 'P<sub>a</sub>', Pw: 'P<sub>w</sub>', Rmm: 'R', Cu: 'C<sub>u</sub>', D50: 'D<sub>50</sub>', D10: 'D<sub>10</sub>',
     dia: 'D', diaS: 'd', grav: 'g', alpha: 'α', deg: '(π/180)', Dh1: 'Δh<sub>1</sub>', Dh2: 'Δh<sub>2</sub>', k085: 'k<sub>0.85</sub>',
-    kreq: 'k<sub>req</sub>', tday: 't', Lm: 'L', Ht: 'H', ratio: 'ratio', gwN: 'γ<sub>w</sub>', km: 'k', Kcm: 'K', nexp: 'n',
+    kreq: 'k<sub>req</sub>', tday: 't', Lm: 'L', Ht: 'H', ratio: 'ratio', gwN: 'γ<sub>w</sub>', km: 'k', Kcm: 'K̄', nexp: 'n',
     wsat: 'w<sub>sat</sub>', gdT: 'γ<sub>d,req</sub>', eB: 'e<sub>B</sub>', wB: 'w<sub>B</sub>', VB: 'V<sub>borrow</sub>', Aw: 'A', d: 'd',
-    D1: 'D<sub>r1</sub>', D2: 'D<sub>r2</sub>', S1: 'S<sub>1</sub>', S2: 'S<sub>2</sub>', n2: 'n<sub>2</sub>', e2: 'e<sub>2</sub>', x: 'x'
+    D1: 'D<sub>r1</sub>', D2: 'D<sub>r2</sub>', S1: 'S<sub>1</sub>', S2: 'S<sub>2</sub>', n2: 'n<sub>2</sub>', e2: 'e<sub>2</sub>', x: 'x',
+    Vs: 'V<sub>s</sub>', Vv: 'V<sub>v</sub>', Vw: 'V<sub>w</sub>', Va: 'V<sub>a</sub>', Ws: 'W<sub>s</sub>', Ww: 'W<sub>w</sub>', Wa: 'W<sub>a</sub>',
+    Md: 'M<sub>d</sub>', Ma: 'M<sub>a</sub>', gs: 'γ<sub>s</sub>', rhosat: 'ρ<sub>sat</sub>', kH: 'k<sub>H</sub>', kV: 'k<sub>V</sub>',
+    hp: 'h<sub>p</sub>', hL: 'h<sub>L</sub>', Av: 'A<sub>v</sub>', Re: 'Re', hpw: 'u/γ<sub>w</sub>', Dhi: 'Δh<sub>i</sub>',
+    Vborrow: 'V<sub>borrow</sub>', Vfill: 'V<sub>fill</sub>', Mmoist: 'M<sub>moist</sub>', Wd: 'W<sub>d</sub>', thalf: 't<sub>½</sub>', LA: 'L<sub>A</sub>', LB: 'L<sub>B</sub>', LC: 'L<sub>C</sub>', kA: 'k<sub>A</sub>', kB: 'k<sub>B</sub>', kC: 'k<sub>C</sub>',
+    Lmm: 'L', hmm: 'h', tmin: 't', kmm: 'k', h1mm: 'h<sub>1</sub>', qh: 'q'
   };
   function defineSymbol(name, html) { SYM[name] = html; }
   function symHTML(name) {

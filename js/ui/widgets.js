@@ -23,12 +23,12 @@
       var lo = p.unit === 'kN/m³' ? 12 : 75, hi = p.unit === 'kN/m³' ? 24 : 155;
       out.push(X.symHTML(s) + ' = ' + PB.showVal(v, p.unit) + (v >= lo && v <= hi ? ' lies in the typical soil range (' + lo + '–' + hi + ' ' + p.unit + ') ✓' : ' is outside the usual ' + lo + '–' + hi + ' ' + p.unit + ' — re-check if this is unexpected.'));
     }
-    if (s === 'gsub') out.push('γ′ is positive and about half of γsat ✓');
-    if (s === 'S') out.push('S = ' + PB.showVal(v, '%') + (v <= 1.0000001 ? ' ≤ 100 % ✓' : ' > 100 % ✗ impossible'));
-    if (s === 'n') out.push('0 < n < 1 ✓');
-    if (s === 'e' && v > 0) out.push('e > 0 ✓' + (v > 1 ? ' (e > 1 is valid — voids exceed solids)' : ''));
-    if (s === 'Dr') out.push('0 ≤ Dr ≤ 100 % ' + (v >= -1e-9 && v <= 1 + 1e-9 ? '✓' : '✗'));
-    if ((s === 'k' || s === 'k2' || s === 'k20' || s === 'kHeq' || s === 'kVeq' || s === 'k3') && p.unit === 'cm/s') out.push('k = ' + U.fmt(v, 3) + ' cm/s is typical of: ' + SM.perm.classify(v));
+    if (s === 'gsub') out.push(SM.mt.html('$gsub$ is positive and about half of $gsat$ ✓'));
+    if (s === 'S') out.push(SM.mt.html('$S$ = ' + PB.showVal(v, '%') + (v <= 1.0000001 ? ' ≤ 100 % ✓' : ' > 100 % ✗ impossible')));
+    if (s === 'n') out.push(SM.mt.html('0 < $n$ < 1 ✓'));
+    if (s === 'e' && v > 0) out.push(SM.mt.html('$e$ > 0 ✓' + (v > 1 ? ' ($e$ > 1 is valid: the voids exceed the solids)' : '')));
+    if (s === 'Dr') out.push(SM.mt.html('0 ≤ $Dr$ ≤ 100 % ' + (v >= -1e-9 && v <= 1 + 1e-9 ? '✓' : '✗')));
+    if ((s === 'k' || s === 'k2' || s === 'k20' || s === 'kHeq' || s === 'kVeq' || s === 'k3') && p.unit === 'cm/s') out.push(X.symHTML(s) + ' = ' + U.fmt(v, 3) + ' cm/s is typical of: ' + SM.perm.classify(v));
     if (s === 'vs') out.push('Seepage velocity exceeds discharge velocity ✓');
     return out;
   }
@@ -90,7 +90,7 @@
       main += '<ol class="pp-parts">' + P.parts.map(function (p, i) {
         var d = draft[i] || {};
         return '<li class="part" data-i="' + i + '"><div class="pl"><span class="plabel">' + p.label + '</span> <span class="psym">' + X.symHTML(p.sym) + ' =</span></div>' +
-          '<div class="pin"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="' + esc(p.label) + '" value="' + esc(d.v || '') + '">' + unitSelect(p, P.sys) +
+          '<div class="pin"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="' + esc(p.labelText) + '" value="' + esc(d.v || '') + '">' + unitSelect(p, P.sys) +
           (mode === 'guided' ? '<button class="btn small check-btn" type="button">Check</button>' : '') + '<span class="mark" aria-hidden="true"></span></div>' +
           '<div class="phint"></div><div class="fb" aria-live="polite"></div></li>';
       }).join('') + '</ol>';
@@ -121,7 +121,7 @@
     }
     function logMistake(i, res) {
       if (res.status === 'correct' || res.status === 'invalid') return;
-      store.recordMistake({ templateId: P.templateId, chapter: P.chapter, part: P.parts[i].label, tag: res.tag || P.parts[i].tag || 'concept', msg: res.msg.replace(/<[^>]+>/g, ''), mode: mode });
+      store.recordMistake({ templateId: P.templateId, chapter: P.chapter, part: P.parts[i].label, tag: res.tag || P.parts[i].tag || 'concept', msg: res.msg, mode: mode });
     }
     function checkPart(i) {
       var r = readPart(i), p = P.parts[i], st = partState[i];
@@ -277,10 +277,11 @@
   /* ---------- multiple-choice / concept question ---------- */
   function MCQ(q, opts) {
     opts = opts || {};
+    var R = { prompt: SM.mt.html(q.prompt), explain: SM.mt.html(q.explain), options: q.options.map(function (o) { return { t: SM.mt.html(o.t), f: SM.mt.html(o.f) }; }) };
     var typeName = { mcq: 'Concept check', eqselect: 'Equation selection', mistake: 'Find the mistake', predict: 'Predict the change' }[q.type] || 'Question';
     var node = el('<div class="mcq"><div class="pp-head"><span class="badge">' + chLabel(q.chapter) + '</span> <span class="badge alt">' + typeName + '</span></div>' +
-      '<p class="mq-prompt">' + q.prompt + '</p><div class="mq-opts" role="group">' +
-      q.options.map(function (o, k) { return '<button type="button" class="opt" data-k="' + k + '"><span class="ol">' + 'ABCDE'[k] + '</span> ' + o.t + '</button>'; }).join('') +
+      '<p class="mq-prompt">' + R.prompt + '</p><div class="mq-opts" role="group">' +
+      R.options.map(function (o, k) { return '<button type="button" class="opt" data-k="' + k + '"><span class="ol">' + 'ABCDE'[k] + '</span> ' + o.t + '</button>'; }).join('') +
       '</div><div class="fb" aria-live="polite"></div></div>');
     var answered = false, chosen = null;
     node.addEventListener('click', function (ev) {
@@ -291,15 +292,15 @@
       var ok = k === q.answer;
       b.classList.add(ok ? 'right' : 'wrong');
       var fb = node.querySelector('.fb');
-      if (ok) { fb.className = 'fb correct'; fb.innerHTML = '✓ Correct. ' + q.explain; }
+      if (ok) { fb.className = 'fb correct'; fb.innerHTML = '✓ Correct. ' + R.explain; }
       else {
         fb.className = 'fb incorrect';
-        fb.innerHTML = '✗ ' + (q.options[k].f ? q.options[k].f + ' ' : 'Not this one. ') + (answered ? '' : 'Try again — or read the explanation after another attempt.');
-        if (answered) fb.innerHTML += '<div class="muted">Explanation: ' + q.explain + '</div>';
+        fb.innerHTML = '✗ ' + (R.options[k].f ? R.options[k].f + ' ' : 'Not this one. ') + (answered ? '' : 'Try again — or read the explanation after another attempt.');
+        if (answered) fb.innerHTML += '<div class="muted">Explanation: ' + R.explain + '</div>';
       }
       if (!answered) {
         SM.store.recordConcept(q.id, ok, q.chapter, q.topic);
-        if (!ok) SM.store.recordMistake({ conceptId: q.id, chapter: q.chapter, part: typeName, tag: q.topic, msg: q.prompt.replace(/<[^>]+>/g, '').slice(0, 120) });
+        if (!ok) SM.store.recordMistake({ conceptId: q.id, chapter: q.chapter, part: typeName, tag: q.topic, msg: '' });
         if (opts.onAnswer) opts.onAnswer(ok);
       }
       answered = true;
@@ -308,16 +309,16 @@
       var ok = chosen === q.answer;
       node.querySelectorAll('.opt').forEach(function (x, k) { if (k === q.answer) x.classList.add('right'); else if (k === chosen) x.classList.add('wrong'); x.disabled = true; });
       var fb = node.querySelector('.fb'); fb.className = 'fb ' + (ok ? 'correct' : 'incorrect');
-      fb.innerHTML = (ok ? '✓ ' : '✗ ' + (chosen === null ? 'Not answered. ' : (q.options[chosen].f || '') + ' ')) + q.explain;
+      fb.innerHTML = (ok ? '✓ ' : '✗ ' + (chosen === null ? 'Not answered. ' : (R.options[chosen].f || '') + ' ')) + R.explain;
       SM.store.recordConcept(q.id, ok, q.chapter, q.topic);
-      if (!ok) SM.store.recordMistake({ conceptId: q.id, chapter: q.chapter, part: typeName, tag: q.topic, msg: q.prompt.replace(/<[^>]+>/g, '').slice(0, 120) });
+      if (!ok) SM.store.recordMistake({ conceptId: q.id, chapter: q.chapter, part: typeName, tag: q.topic, msg: '' });
       return ok ? 1 : 0;
     };
     return node;
   }
 
   function mathHelpHTML(keys) {
-    return (keys || []).map(function (k) { var m = SM.mathHelp[k]; return m ? '<details class="mathhelp"><summary>Math help: ' + m.title + '</summary>' + m.html + '</details>' : ''; }).join('');
+    return (keys || []).map(function (k) { var m = SM.mathHelp[k]; return m ? '<details class="mathhelp"><summary>Math help: ' + SM.mt.html(m.title) + '</summary>' + SM.mt.html(m.html) + '</details>' : ''; }).join('');
   }
 
   SM.ui = { el: el, esc: esc, ProblemPlayer: ProblemPlayer, MCQ: MCQ, solutionHTML: solutionHTML, unitSelect: unitSelect, mathHelpHTML: mathHelpHTML, chLabel: chLabel, stars: stars };
