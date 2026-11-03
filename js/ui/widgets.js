@@ -44,10 +44,10 @@
     h += '<div class="step"><span class="sn">4</span><div><b>Assumptions</b><ul>' + (P.assumptions.length ? P.assumptions.map(function (a) { return '<li>' + a + '</li>'; }).join('') : '<li>None beyond the given data.</li>') + '</ul></div></div>';
     P.parts.forEach(function (p, i) {
       h += '<div class="step part"><span class="sn pt" title="Part ' + 'abcdefghij'[i] + '">' + 'abcdefghij'[i] + '</span><div><b>' + p.label + '</b>' +
-        '<div class="ss"><span class="sl">5 Choose</span> ' + (p.why || 'Definition.') + '</div>' +
-        '<div class="ss"><span class="sl">6 Rearrange</span> ' + p.symbolic + '</div>' +
-        '<div class="ss"><span class="sl">7 Substitute</span> ' + p.substituted + '</div>' +
-        '<div class="ss"><span class="sl">8 Calculate</span> <span class="res">' + p.result + '</span>' + (p.dim === 'ratio' ? ' <span class="muted">(= ' + U.fmt(p.value, 4) + ' as a decimal)</span>' : '') + '</div></div></div>';
+        '<div class="ss"><span class="sl">5 Choose</span><span class="sc">' + (p.why || 'Definition.') + '</span></div>' +
+        '<div class="ss"><span class="sl">6 Rearrange</span><span class="sc">' + p.symbolic + '</span></div>' +
+        '<div class="ss"><span class="sl">7 Substitute</span><span class="sc">' + p.substituted + '</span></div>' +
+        '<div class="ss"><span class="sl">8 Calculate</span><span class="sc"><span class="res">' + p.result + '</span>' + (p.dim === 'ratio' ? ' <span class="muted">(= ' + U.fmt(p.value, 4) + ' as a decimal)</span>' : '') + '</span></div></div></div>';
     });
     var checks = [];
     P.parts.forEach(function (p) { checks = checks.concat(plausibility(p, P.sys)); });

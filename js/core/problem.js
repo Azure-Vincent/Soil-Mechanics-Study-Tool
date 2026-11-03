@@ -78,7 +78,7 @@
       text: SM.mt.html(spec.text), given: (spec.given || []).filter(function (g) { return !g.hidden; }).map(function (g) {
         return { sym: g.sym, label: SM.mt.html(g.label), value: g.value, unit: g.unit || '', html: X.symHTML(g.sym) + ' = ' + showVal(g.value, g.unit, g.sig || 3, g.sig !== undefined) };
       }),
-      constants: (spec.constants || []).map(function (c) { return { html: X.symHTML(c.sym) + ' = ' + showVal(c.value, c.unit, 4) + (c.label ? ' (' + SM.mt.html(c.label) + ')' : '') }; }),
+      constants: (spec.constants || []).filter(function (c) { return !c.hidden; }).map(function (c) { return { html: X.symHTML(c.sym) + ' = ' + showVal(c.value, c.unit, 4) + (c.label ? ' (' + SM.mt.html(c.label) + ')' : '') }; }),
       find: spec.find || parts.map(function (p) { return p.label + ' (' + X.symText(p.sym) + ')'; }),
       sketch: spec.sketch || null, assumptions: (spec.assumptions || []).map(SM.mt.html), choose: SM.mt.html(spec.choose || ''),
       parts: parts, check: (spec.check || []).map(SM.mt.html), interpret: SM.mt.html(spec.interpret || ''), scope: scope, units: units

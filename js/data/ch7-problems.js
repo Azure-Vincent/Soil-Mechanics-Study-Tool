@@ -548,11 +548,11 @@
       var H = r.pick([2, 3, 4]), alpha = r.pick([5, 8, 10, 12, 15]), L = r.pick([40, 50, 60]), h = r.range(2, 5, 1), k = rs(Math.pow(10, r.range(-3, -2)), 2);
       return {
         text: 'A permeable soil layer is underlain by an impervious layer and dips at $alpha$ = ' + alpha + '° to the horizontal. Its thickness measured vertically is $H$ = ' + H + ' m, and $k$ = ' + kf(k) + '. Two piezometers placed $L$ = ' + L + ' m apart HORIZONTALLY show a difference in water level $h$ = ' + h + ' m. Calculate the rate of seepage per metre width of the layer, in m³/h.',
-        constants: [{ sym: 'deg', value: Math.PI / 180, unit: '', label: 'radians per degree' }],
+        constants: [{ sym: 'deg', value: Math.PI / 180, unit: '', label: 'radians per degree', hidden: true }],
         given: [{ sym: 'H', label: 'Layer thickness (vertical)', value: H, unit: 'm', sig: 2 }, { sym: 'alpha', label: 'Dip angle in degrees', value: alpha, unit: '', sig: 2 }, { sym: 'L', label: 'Horizontal distance between piezometers', value: L, unit: 'm', sig: 2 }, { sym: 'h', label: 'Head loss', value: h, unit: 'm', sig: 2 }, { sym: 'k', label: 'Hydraulic conductivity', value: k, unit: 'cm/s', sig: 2 }],
         assumptions: ['Flow is parallel to the layer; the flow length between the piezometers is $L / cos alpha$; the flow area per unit width is $(H cos alpha)(1)$.'],
         parts: [
-          { sym: 'i', label: 'Hydraulic gradient', expr: 'h / (L / cos(alpha * deg))', unit: '', why: '$i$ = head loss ÷ length along the flow path; the path along the layer is $L / cos alpha$.', mistakes: [{ expr: 'h / L', msg: 'The flow path follows the inclined layer, so its length is $L / cos alpha$, not $L$.', tag: 'gradient' }] },
+          { sym: 'i', label: 'Hydraulic gradient', expr: 'h * cos(alpha * deg) / L', unit: '', why: '$i$ = head loss ÷ length along the flow path. The path along the layer is $L / cos alpha$, so $i = h / (L / cos alpha) = h cos alpha / L$.', mistakes: [{ expr: 'h / L', msg: 'The flow path follows the inclined layer, so its length is $L / cos alpha$, not $L$.', tag: 'gradient' }] },
           { sym: 'Aw', label: 'Flow area per metre width', expr: 'H * cos(alpha * deg) * 1', unit: 'm²', why: 'Area normal to the flow: $A = (H cos alpha)(1)$.' },
           { sym: 'q', label: 'Rate of seepage per metre width', expr: 'k / 100 * i * Aw * 3600', unit: 'm³/h', why: '$q = k i A$, with $k$ converted from cm/s to m/s (÷100) and seconds to hours (×3600).' }
         ],

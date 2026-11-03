@@ -151,20 +151,28 @@
         return symHTML(n.n);
       case 'call':
         var inner = n.args.map(function (a) { return render(a, opts, 'call'); }).join(', ');
-        if (n.f === 'sqrt') return '√<span class="ov">(' + inner + ')</span>';
-        if (n.f === 'log10') return 'log<sub>10</sub>(' + inner + ')';
-        if (n.f === 'exp') return 'exp(' + inner + ')';
-        return n.f + '(' + inner + ')';
+        return '<span class="fx">' + callHTML(n, inner) + '</span>';
       case 'bin':
         if (n.op === '/') return '<span class="frac"><span class="fn">' + render(n.a, opts, 'frac') + '</span><span class="fd">' + render(n.b, opts, 'frac') + '</span></span>';
-        if (n.op === '^') return wrap(n.a, opts, 'pow') + '<sup>' + render(n.b, opts, 'frac') + '</sup>';
+        if (n.op === '^') return '<span class="fx">' + wrap(n.a, opts, 'pow') + '<sup>' + render(n.b, opts, 'frac') + '</sup></span>';
+        // an angle in degrees: alpha * deg evaluates in radians but is written α (and 8° when substituted)
+        if (n.op === '*' && strip(n.b).t === 'var' && strip(n.b).n === 'deg') return opts.values ? '<span class="fx">' + render(n.a, opts, ctxParent) + '°</span>' : render(n.a, opts, ctxParent);
         if (n.op === '*') return wrap(n.a, opts, '*') + ' · ' + wrap(n.b, opts, '*');
         var right = (n.op === '-' && (strip(n.b).t === 'bin') && (strip(n.b).op === '+' || strip(n.b).op === '-')) ? '(' + render(n.b, opts, 'top') + ')' : render(n.b, opts, n.op);
         return render(n.a, opts, n.op) + ' ' + (n.op === '-' ? '−' : '+') + ' ' + right;
     }
     return '?';
   }
+  function callHTML(n, inner) {
+    if (n.f === 'sqrt') return '√<span class="ov">(' + inner + ')</span>';
+    if (n.f === 'log10') return 'log<sub>10</sub>(' + inner + ')';
+    if (n.f === 'exp') return 'exp(' + inner + ')';
+    if ((n.f === 'cos' || n.f === 'sin' || n.f === 'tan') && n.args.length === 1 && isAngle(n.args[0])) return n.f + ' ' + inner;
+    return n.f + '(' + inner + ')';
+  }
   function strip(n) { while (n.t === 'paren') n = n.a; return n; }
+  // an angle written in degrees, e.g. alpha * deg (deg = π/180 converts for evaluation only)
+  function isAngle(n) { n = strip(n); return n.t === 'var' || (n.t === 'bin' && n.op === '*' && strip(n.b).t === 'var' && strip(n.b).n === 'deg' && strip(n.a).t === 'var'); }
   function wrap(n, opts, ctx) {
     var s = strip(n);
     var needs = s.t === 'bin' && (s.op === '+' || s.op === '-') ;
