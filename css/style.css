@@ -136,7 +136,7 @@ details.mathhelp summary { cursor: pointer; font-weight: 600; color: var(--accen
 .dcap { text-align: center; color: var(--muted); font-size: .85rem; }
 
 /* problem player */
-.pp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 420px); gap: 18px; padding: 14px 16px; margin: 10px 0; }
+.pp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 520px); gap: 18px; padding: 14px 16px; margin: 10px 0; }
 .pp.noside { grid-template-columns: 1fr; }
 .pp-side .sticky { position: sticky; top: 140px; }
 .pp-head h3 { margin: .3em 0 .1em; }
@@ -273,7 +273,15 @@ details.mathhelp summary { cursor: pointer; font-weight: 600; color: var(--accen
 .dwaterp, .dsolidp { stroke: var(--ink); stroke-width: .6; }
 .dsolid0 { fill: #b3b3a6; } .dsd { fill: #4d5a6a; } .dsd2 { fill: #5aa3d6; } .dwl { stroke: #1f5f8b; stroke-width: 1.2; }
 .dframe { fill: none; stroke: var(--ink); stroke-width: 1.4; } .dframe1 { stroke: var(--ink); stroke-width: 1; }
-.dg[aria-label^="Phase diagram"] { max-width: 600px; }
+.dg[aria-label^="Phase diagram"] { max-width: 640px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dsolid0 { fill: #6f6f66; } :root:not([data-theme="light"]) .dsd { fill: #c9d1db; } :root:not([data-theme="light"]) .dwl { stroke: #cfe6f7; } }
 .dwaterbg { fill: #e3f1fb; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dwaterbg { fill: #24445c; } }
+
+.phase-lab { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.phase-lab .pdiag { grid-column: 1 / -1; grid-row: 1; position: static; }
+.ex-body { grid-template-columns: minmax(300px, 640px) 1fr; }
+
+/* labels stay legible where they cross dashed boundary lines */
+.dg text { paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+.dg .dt.in { stroke: none; }

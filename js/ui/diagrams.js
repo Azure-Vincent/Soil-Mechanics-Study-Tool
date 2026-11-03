@@ -41,13 +41,31 @@
   function TR(x, y, s, cls, deg) { // rotated text, e.g. for the total W, Vv and V labels
     return '<text x="' + x + '" y="' + y + '" class="' + (cls || 'dt sm') + '" text-anchor="middle" transform="rotate(' + deg + ' ' + x + ' ' + y + ')">' + (String(s).indexOf('$') >= 0 ? SM.mt.svg(s) : s) + '</text>';
   }
+  /* label helpers: horizontal labels, split onto two lines ("symbol" / "= value") when long */
+  function estW(t) { return SM.mt.plain(String(t)).length * 6.3 + 4; }
+  function splitLabel(t) {
+    t = String(t);
+    if (estW(t) <= 120) return [t];
+    var i = t.indexOf('=');
+    if (i < 0) return [t];
+    var a = t.slice(0, i).replace(/\s+$/, ''), b = '= ' + t.slice(i + 1).replace(/^\s+/, '');
+    if ((a.split('$').length - 1) % 2 === 1) { a += '$'; b = '$' + b; }
+    return [a, b];
+  }
+  function labelW(t) { return Math.max.apply(null, splitLabel(t).map(estW)); }
+  function LB(x, y, t, cls, anchor) {
+    var ls = splitLabel(t);
+    if (ls.length === 1) return T(x, y + 4, ls[0], cls, anchor);
+    return T(x, y - 3, ls[0], cls, anchor) + T(x, y + 11, ls[1], cls, anchor);
+  }
+
   function phase(o) {
     var v = o.vals || {}, u = o.units || { V: '', F: '' }, known = o.known || [], lab = o.labels || {};
-    var W = 590, H = 300, x0 = 215, bw = 120, top = 34, tot = 220;
+    var bw = 120, top = 34, tot = 220;
     var Vs = v.Vs, Vw = v.Vw, Va = v.Va;
     var hA, hW, hS;
     if (isFinite(Vs) && isFinite(Vw) && isFinite(Va) && (Vs + Vw + Va) > 0) {
-      var s = Vs + Vw + Va, mn = 24;
+      var s = Vs + Vw + Va, mn = 28;
       hA = Va > 1e-12 ? Math.max(mn, tot * Va / s) : 0; hW = Vw > 1e-12 ? Math.max(mn, tot * Vw / s) : 0; hS = Math.max(mn, tot * Vs / s);
       var k = tot / (hA + hW + hS); hA *= k; hW *= k; hS *= k;
     } else { hA = 60; hW = 65; hS = 95; }
@@ -60,36 +78,38 @@
       var unit = (sym[0] === 'V') ? u.V : u.F;
       return '$' + nm + '$ = ' + f(v[sym], 4) + ' ' + unit;
     }
+    var L = { Wa: (o.mass ? '$Ma$' : '$Wa$') + ' ≈ 0', Ww: lbl('Ww'), Ws: lbl('Ws'), W: lbl('W'), Va: lbl('Va'), Vw: lbl('Vw'), Vs: lbl('Vs'), Vv: lbl('Vv'), V: lbl('V') };
+    // horizontal layout sized to the labels (as in the textbook figure)
+    var pad = 8;
+    var wW = labelW(L.W), wLin = Math.max(hA > 0.5 ? labelW(L.Wa) : 0, hW > 0.5 ? labelW(L.Ww) : 0, labelW(L.Ws));
+    var xWlab = pad + wW, xWarr = xWlab + 8, xLlab = xWarr + 14 + wLin, xLarr = xLlab + 8, x0 = xLarr + 12, xr = x0 + bw;
+    var xRarr = xr + 12, xRlab = xRarr + 8;
+    var wRin = Math.max(hA > 0.5 ? labelW(L.Va) : 0, hW > 0.5 ? labelW(L.Vw) : 0, labelW(L.Vs));
+    var hasVv = yS - yA > 0.5, xVv = xRlab + wRin + 12, wVv = hasVv ? labelW(L.Vv) : 0;
+    var xV = hasVv ? xVv + 10 + wVv + 12 : xVv, W = xV + 10 + labelW(L.V) + pad;
     var b = DEFS.replace('</defs>', PDEFS + '</defs>');
-    var xr = x0 + bw;
-    // dashed boundary lines across the whole figure
-    [yA, yW, yS, yB].forEach(function (y, i) { if (i === 1 && hA < 0.5) return; if (i === 2 && hW < 0.5) return; b += Ln(14, y, W - 14, y, 'dl dash'); });
-    // the block
+    [yA, yW, yS, yB].forEach(function (y, i) { if (i === 1 && hA < 0.5) return; if (i === 2 && hW < 0.5) return; b += Ln(4, y, W - 4, y, 'dl dash'); });
     if (hA > 0.5) b += R(x0, yA, bw, hA, 'dair' + (o.highlight === 'Va' ? ' hl' : ''));
     if (hW > 0.5) b += R(x0, yW, bw, hW, 'dwaterp' + (o.highlight === 'Vw' ? ' hl' : ''));
     b += R(x0, yS, bw, hS, 'dsolidp' + (o.highlight === 'Vs' ? ' hl' : ''));
     b += R(x0, yA, bw, yB - yA, 'dframe');
-    // headings
-    b += T(x0 - 105, 18, o.mass ? 'Mass' : 'Weight', 'dt sm b') + T(xr + 105, 18, 'Volume', 'dt sm b');
-    // LEFT: weights (inner arrows, then total W)
-    var xl = x0 - 14;
-    if (hA > 0.5) b += T(xl - 6, yA + hA / 2 + 4, (o.mass ? '$Ma$' : '$Wa$') + ' ≈ 0', 'dt sm muted', 'end');
-    if (hW > 0.5) b += darrow(xl, yW, yS) + T(xl - 6, yW + hW / 2 + 4, lbl('Ww'), 'dt sm', 'end');
-    b += darrow(xl, yS, yB) + T(xl - 6, yS + hS / 2 + 4, lbl('Ws'), 'dt sm', 'end');
-    b += darrow(30, yA, yB) + TR(20, (yA + yB) / 2, lbl('W'), 'dt sm b', -90);
-    // RIGHT: volumes (inner arrows, then Vv, then total V)
-    var xv = xr + 14;
-    if (hA > 0.5) b += darrow(xv, yA, yW) + T(xv + 6, yA + hA / 2 + 4, lbl('Va'), 'dt sm', 'start');
-    if (hW > 0.5) b += darrow(xv, yW, yS) + T(xv + 6, yW + hW / 2 + 4, lbl('Vw'), 'dt sm', 'start');
-    b += darrow(xv, yS, yB) + T(xv + 6, yS + hS / 2 + 4, lbl('Vs'), 'dt sm', 'start');
-    if (yS - yA > 0.5) b += darrow(W - 80, yA, yS) + TR(W - 70, (yA + yS) / 2, lbl('Vv'), 'dt sm', 90);
-    b += darrow(W - 32, yA, yB) + TR(W - 20, (yA + yB) / 2, lbl('V'), 'dt sm b', 90);
-    // legend
+    b += T((xWarr + xLarr) / 2, 18, o.mass ? 'Mass' : 'Weight', 'dt sm b') + T((xRarr + xV) / 2, 18, 'Volume', 'dt sm b');
+    // weights (left): inner labels, then total W
+    if (hA > 0.5) b += LB(xLlab, yA + hA / 2, L.Wa, 'dt sm muted', 'end');
+    if (hW > 0.5) b += darrow(xLarr, yW, yS) + LB(xLlab, yW + hW / 2, L.Ww, 'dt sm', 'end');
+    b += darrow(xLarr, yS, yB) + LB(xLlab, yS + hS / 2, L.Ws, 'dt sm', 'end');
+    b += darrow(xWarr, yA, yB) + LB(xWlab, (yA + yB) / 2, L.W, 'dt sm b', 'end');
+    // volumes (right): inner labels, then Vv, then total V — all horizontal
+    if (hA > 0.5) b += darrow(xRarr, yA, yW) + LB(xRlab, yA + hA / 2, L.Va, 'dt sm', 'start');
+    if (hW > 0.5) b += darrow(xRarr, yW, yS) + LB(xRlab, yW + hW / 2, L.Vw, 'dt sm', 'start');
+    b += darrow(xRarr, yS, yB) + LB(xRlab, yS + hS / 2, L.Vs, 'dt sm', 'start');
+    if (hasVv) b += darrow(xVv, yA, yS) + LB(xVv + 10, (yA + yS) / 2, L.Vv, 'dt sm', 'start');
+    b += darrow(xV, yA, yB) + LB(xV + 10, (yA + yB) / 2, L.V, 'dt sm b', 'start');
     var ly = yB + 26;
     b += R(x0 - 50, ly - 10, 12, 12, 'dair dframe1') + T(x0 - 34, ly, 'Air', 'dt sm', 'start');
     b += R(x0 + 4, ly - 10, 12, 12, 'dwaterp dframe1') + T(x0 + 20, ly, 'Water', 'dt sm', 'start');
     b += R(x0 + 76, ly - 10, 12, 12, 'dsolidp dframe1') + T(x0 + 92, ly, 'Solid', 'dt sm', 'start');
-    return svg(W, ly + 10, b, 'Phase diagram: ' + (o.mass ? 'masses' : 'weights') + ' on the left, volumes on the right');
+    return svg(Math.ceil(W), ly + 10, b, 'Phase diagram: ' + (o.mass ? 'masses' : 'weights') + ' on the left, volumes on the right').replace('<svg class="dg"', '<svg class="dg" style="max-width:' + Math.round(W * 1.2) + 'px"');
   }
 
   /* ---------- normalised phase diagram with symbolic labels ---------- */
