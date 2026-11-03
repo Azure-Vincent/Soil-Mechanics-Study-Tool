@@ -17,6 +17,7 @@
 
   function plainText(h) { return SM.mt.plain(String(h || '')).replace(/<[^>]+>/g, ' '); }
   function sys() { return SM.store.sys(); }
+  function matchCh(t, c) { return !c || (c === 'FL' ? !!t.florida : String(t.chapter) === c); }
   function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
   function buildProblem(tid, seed, s) { return PB.build(SM.templateById(tid), seed, s || sys()); }
   function topicName(t) { return (SM.store.TAGS[t] || t || '').replace(/-/g, ' '); }
@@ -78,9 +79,11 @@
   var lessonCache = {};
   V.learn = function (sec) {
     sec.innerHTML = '<div class="learn"><nav class="lesson-nav" aria-label="Lessons"></nav><div class="lesson-host"></div></div>';
-    var nav = sec.querySelector('.lesson-nav'), groups = { 3: 'Chapter 3 — Weight–Volume', 7: 'Chapter 7 — Permeability', X: 'Connecting the chapters' };
-    [3, 7, 'X'].forEach(function (c) {
-      nav.insertAdjacentHTML('beforeend', '<h4>' + groups[c] + '</h4><ul>' + SM.lessons.filter(function (l) { return l.chapter === c; }).map(function (l) {
+    var nav = sec.querySelector('.lesson-nav'), groups = { 3: 'Chapter 3 — Weight–Volume', 7: 'Chapter 7 — Permeability', X: 'Connecting the chapters', FL: 'Florida soils and groundwater' };
+    [3, 7, 'X', 'FL'].forEach(function (c) {
+      var inGroup = SM.lessons.filter(function (l) { return c === 'FL' ? l.florida : (!l.florida && l.chapter === c); });
+      if (!inGroup.length) return;
+      nav.insertAdjacentHTML('beforeend', '<h4>' + groups[c] + '</h4><ul>' + inGroup.map(function (l) {
         return '<li><a href="#/learn/' + l.id + '" data-id="' + l.id + '">' + mt(l.title) + '</a></li>'; }).join('') + '</ul>');
     });
     var mh = Object.keys(SM.mathHelp);
@@ -413,18 +416,18 @@
   /* =================================================================== PRACTICE */
   V.practice = function (sec) {
     var topics = {}; SM.templates.forEach(function (t) { topics[t.topic] = 1; });
-    sec.innerHTML = '<div class="toolbar"><label>Chapter <select class="ch"><option value="">All</option><option value="3">Ch. 3</option><option value="7">Ch. 7</option><option value="X">Combined</option></select></label>' +
+    sec.innerHTML = '<div class="toolbar"><label>Chapter <select class="ch"><option value="">All</option><option value="3">Ch. 3</option><option value="7">Ch. 7</option><option value="X">Combined</option><option value="FL">Florida context</option></select></label>' +
       '<label>Problem <select class="tp"></select></label>' +
       '<label>Mode <select class="md"><option value="guided">Guided: hints + step checks</option><option value="independent">Independent: solution after submit</option><option value="socratic">Socratic: one question at a time</option></select></label>' +
       '<button class="btn primary go" type="button">New problem</button></div><div class="practice-host"></div>';
     var chSel = sec.querySelector('.ch'), tpSel = sec.querySelector('.tp'), mdSel = sec.querySelector('.md');
     function fillTp() {
       var c = chSel.value;
-      tpSel.innerHTML = '<option value="">Random</option>' + SM.templates.filter(function (t) { return !c || String(t.chapter) === c; }).map(function (t) { return '<option value="' + t.id + '">' + ui.chLabel(t.chapter) + ' · ' + esc(t.title) + '</option>'; }).join('');
+      tpSel.innerHTML = '<option value="">Random</option>' + SM.templates.filter(function (t) { return matchCh(t, c); }).map(function (t) { return '<option value="' + t.id + '">' + (t.florida ? 'FL · ' : '') + ui.chLabel(t.chapter) + ' · ' + esc(t.title) + '</option>'; }).join('');
     }
     chSel.addEventListener('change', fillTp); fillTp();
     sec.querySelector('.go').addEventListener('click', function () {
-      var pool = SM.templates.filter(function (t) { return !chSel.value || String(t.chapter) === chSel.value; });
+      var pool = SM.templates.filter(function (t) { return matchCh(t, chSel.value); });
       var tid = tpSel.value || rnd(pool).id;
       SM.store.setCurrent('practice', { tid: tid, seed: PB.newSeed(), sys: sys(), mode: mdSel.value });
       V.practiceMount(sec);
@@ -450,7 +453,7 @@
   /* =================================================================== MIXED REVIEW */
   V.review = function (sec) {
     var tally = { n: 0, c: 0 };
-    sec.innerHTML = '<div class="toolbar"><label>Coverage <select class="ch"><option value="">Both chapters</option><option value="3">Ch. 3 only</option><option value="7">Ch. 7 only</option></select></label><button class="btn primary nx" type="button">Next question</button><span class="tally"></span></div>' +
+    sec.innerHTML = '<div class="toolbar"><label>Coverage <select class="ch"><option value="">Both chapters</option><option value="3">Ch. 3 only</option><option value="7">Ch. 7 only</option><option value="FL">Florida context</option></select></label><button class="btn primary nx" type="button">Next question</button><span class="tally"></span></div>' +
       '<p class="muted">Questions are mixed. Numerical problems first ask you to <b>identify the method</b>; titles are hidden so the method is not given away.</p><div class="review-host"></div>';
     var host = sec.querySelector('.review-host');
     function next() {
@@ -458,11 +461,11 @@
       host.innerHTML = '';
       var useConcept = Math.random() < 0.45;
       if (useConcept) {
-        var qs = SM.concepts.filter(function (q) { return !c || String(q.chapter) === c || q.chapter === 'X'; });
+        var qs = SM.concepts.filter(function (q) { return c === 'FL' ? q.florida : (!c || String(q.chapter) === c || q.chapter === 'X'); });
         host.appendChild(ui.MCQ(rnd(qs), { onAnswer: function (ok) { tally.n++; if (ok) tally.c++; show(); } }));
         return;
       }
-      var pool = SM.templates.filter(function (t) { return !c || String(t.chapter) === c || t.chapter === 'X'; });
+      var pool = SM.templates.filter(function (t) { return c === 'FL' ? t.florida : (!c || String(t.chapter) === c || t.chapter === 'X'); });
       var t = rnd(pool), P = PB.build(t, PB.newSeed(), sys());
       var others = SM.templates.filter(function (o) { return o.method && o.method !== t.method; });
       var opts = [t.method]; var guard = 0;
@@ -493,7 +496,7 @@
   /* =================================================================== MOCK EXAM */
   V.exam = function (sec) {
     sec.innerHTML = '<div class="panel exam-cfg"><h3>Configure a mock exam</h3>' +
-      '<fieldset><legend>Coverage</legend><label><input type="checkbox" class="c3" checked> Chapter 3</label> <label><input type="checkbox" class="c7" checked> Chapter 7</label> <label><input type="checkbox" class="cx" checked> Combined problems</label></fieldset>' +
+      '<fieldset><legend>Coverage</legend><label><input type="checkbox" class="c3" checked> Chapter 3</label> <label><input type="checkbox" class="c7" checked> Chapter 7</label> <label><input type="checkbox" class="cx" checked> Combined problems</label><label><input type="checkbox" class="fl"> Florida-context items only</label></fieldset>' +
       '<label>Difficulty <select class="df"><option value="">Mixed</option><option value="1">Basic (●○○)</option><option value="2">Intermediate (●●○)</option><option value="3">Challenging (●●●)</option></select></label>' +
       '<label>Numerical problems <input type="number" class="nn" min="1" max="12" value="4"></label><label>Concept questions <input type="number" class="nc" min="0" max="15" value="4"></label>' +
       '<label>Timer (minutes; 0 = untimed) <input type="number" class="tm" min="0" max="240" value="50"></label>' +
@@ -504,10 +507,11 @@
       var chs = []; if (sec.querySelector('.c3').checked) chs.push(3); if (sec.querySelector('.c7').checked) chs.push(7); if (sec.querySelector('.cx').checked) chs.push('X');
       if (!chs.length) { alert('Choose at least one chapter.'); return; }
       var df = sec.querySelector('.df').value, nn = Math.max(0, +sec.querySelector('.nn').value || 0), nc = Math.max(0, +sec.querySelector('.nc').value || 0);
-      var pool = SM.templates.filter(function (t) { return chs.indexOf(t.chapter) >= 0 && (!df || String(t.difficulty) === df); });
-      if (!pool.length) pool = SM.templates.filter(function (t) { return chs.indexOf(t.chapter) >= 0; });
+      var flOnly = sec.querySelector('.fl').checked;
+      var pool = SM.templates.filter(function (t) { return chs.indexOf(t.chapter) >= 0 && (!df || String(t.difficulty) === df) && (!flOnly || t.florida); });
+      if (!pool.length) pool = SM.templates.filter(function (t) { return chs.indexOf(t.chapter) >= 0 && (!flOnly || t.florida); });
       var picks = pool.sort(function () { return Math.random() - 0.5; }).slice(0, nn);
-      var cpool = SM.concepts.filter(function (q) { return chs.indexOf(q.chapter) >= 0; }).sort(function () { return Math.random() - 0.5; }).slice(0, nc);
+      var cpool = SM.concepts.filter(function (q) { return chs.indexOf(q.chapter) >= 0 && (!flOnly || q.florida); }).sort(function () { return Math.random() - 0.5; }).slice(0, nc);
       runExam(host, picks, cpool, +sec.querySelector('.tm').value || 0, sec.querySelector('.fs').checked, chs);
       sec.querySelector('.exam-cfg').hidden = true;
     });

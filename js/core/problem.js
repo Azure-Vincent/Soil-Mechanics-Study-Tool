@@ -74,7 +74,7 @@
     });
     return {
       id: tpl.id + ':' + seed + ':' + sys, templateId: tpl.id, seed: seed, sys: sys, chapter: tpl.chapter, topic: tpl.topic,
-      title: tpl.title, method: SM.mt.html(tpl.method || ''), difficulty: tpl.difficulty || 1,
+      florida: !!tpl.florida, title: tpl.title, method: SM.mt.html(tpl.method || ''), difficulty: tpl.difficulty || 1,
       text: SM.mt.html(spec.text), given: (spec.given || []).filter(function (g) { return !g.hidden; }).map(function (g) {
         return { sym: g.sym, label: SM.mt.html(g.label), value: g.value, unit: g.unit || '', html: X.symHTML(g.sym) + ' = ' + showVal(g.value, g.unit, g.sig || 3, g.sig !== undefined) };
       }),

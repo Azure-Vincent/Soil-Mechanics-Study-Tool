@@ -293,3 +293,6 @@ details.mathhelp summary { cursor: pointer; font-weight: 600; color: var(--accen
 
 .m { white-space: nowrap; }
 @media (max-width: 560px) { .m { white-space: normal; } }
+
+.badge.fl { background: #e6f4ee; color: #17603a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .badge.fl { background: #173022; color: #7fd59b; } }

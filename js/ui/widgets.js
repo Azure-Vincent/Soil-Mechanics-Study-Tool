@@ -70,7 +70,7 @@
     var head = '';
     if (!opts.hideHeader) {
       head = '<div class="pp-head"><div><span class="badge">' + chLabel(P.chapter) + '</span> ' + stars(P.difficulty) +
-        ' <span class="badge sys" title="Unit system used by this problem">Units: ' + P.sys + '</span></div>' +
+        ' <span class="badge sys" title="Unit system used by this problem">Units: ' + P.sys + '</span>' + (P.florida ? ' <span class="badge fl" title="Florida soils / groundwater context">Florida</span>' : '') + '</div>' +
         (opts.hideTitle ? '' : '<h3>' + esc(P.title) + '</h3>') + '</div>';
     }
     var sketch = P.sketch ? SM.diagrams.render(P.sketch) : '';
